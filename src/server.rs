@@ -9,23 +9,13 @@ async fn receive(stream: &mut TcpStream) -> std::io::Result<String> {
     let mut buf = String::new();
     let mut stream = BufReader::new(stream);
     loop {
-        let num_bytes = stream.read_line(&mut buf).await?;
-        if num_bytes == 0 {
-            break;
+        if buf.ends_with("\r\n") {
+            return Ok(buf);
         }
-        let mut r = false;
-        if let Some((_, '\r')) = buf.char_indices().nth_back(1) {
-            r = true
-        };
-        let mut n = false;
-        if let Some((_, '\n')) = buf.char_indices().nth_back(0) {
-            n = true
-        }
-        if r && n {
-            break;
+        if stream.read_line(&mut buf).await? == 0 {
+            return Err(std::io::ErrorKind::UnexpectedEof.into());
         }
     }
-    return Ok(buf);
 }
 
 async fn handle_client(mut stream: TcpStream) {
