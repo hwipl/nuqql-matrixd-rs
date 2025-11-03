@@ -19,14 +19,17 @@ async fn receive(stream: &mut TcpStream) -> std::io::Result<String> {
 }
 
 async fn handle_client(mut stream: TcpStream) {
-    send(&mut stream, b"Welcome to nuqql-matrixd-rs!\r\n")
-        .await
-        .unwrap();
-    let msg = receive(&mut stream).await.unwrap();
-    println!("{}", msg);
-    let (mut reader, mut writer) = stream.split();
-    if let Err(e) = tokio::io::copy(&mut reader, &mut writer).await {
-        println!("Error reading from client: {}", e);
+    if let Err(err) = send(&mut stream, b"Welcome to nuqql-matrixd-rs!\r\n").await {
+        println!("Error sending to client: {err}");
+    }
+    loop {
+        match receive(&mut stream).await {
+            Ok(msg) => print!("{msg}"),
+            Err(err) => {
+                println!("Error receiving from client: {err}");
+                return;
+            }
+        }
     }
 }
 
