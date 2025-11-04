@@ -1,5 +1,7 @@
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
+
+const MAX_MSG_LENGTH: u64 = 128 * 1024;
 
 async fn send(stream: &mut TcpStream, bytes: &[u8]) -> std::io::Result<()> {
     stream.write_all(bytes).await
@@ -7,7 +9,7 @@ async fn send(stream: &mut TcpStream, bytes: &[u8]) -> std::io::Result<()> {
 
 async fn receive(stream: &mut TcpStream) -> std::io::Result<String> {
     let mut buf = String::new();
-    let mut stream = BufReader::new(stream);
+    let mut stream = BufReader::new(stream.take(MAX_MSG_LENGTH));
     loop {
         if buf.ends_with("\r\n") {
             return Ok(buf);
