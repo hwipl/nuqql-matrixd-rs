@@ -42,8 +42,8 @@ pub async fn run_server() -> std::io::Result<()> {
 
     loop {
         let (stream, _) = listener.accept().await?;
-        tokio::spawn(async move {
-            handle_client(stream).await;
-        });
+
+        // only one client connection is allowed at the same time
+        handle_client(stream).await;
     }
 }
