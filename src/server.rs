@@ -3,35 +3,45 @@ use tokio::net::{TcpListener, TcpStream};
 
 const MAX_MSG_LENGTH: u64 = 128 * 1024;
 
-async fn send(stream: &mut TcpStream, bytes: &[u8]) -> std::io::Result<()> {
-    stream.write_all(bytes).await
+struct Client {
+    stream: TcpStream,
 }
 
-async fn receive(stream: &mut TcpStream) -> std::io::Result<String> {
-    let mut buf = String::new();
-    let mut stream = BufReader::new(stream.take(MAX_MSG_LENGTH));
-    loop {
-        if buf.ends_with("\r\n") {
-            return Ok(buf);
-        }
-        if stream.read_line(&mut buf).await? == 0 {
-            return Err(std::io::ErrorKind::UnexpectedEof.into());
-        }
+impl Client {
+    async fn send(stream: &mut TcpStream, bytes: &[u8]) -> std::io::Result<()> {
+        stream.write_all(bytes).await
     }
-}
 
-async fn handle_client(mut stream: TcpStream) {
-    if let Err(err) = send(&mut stream, b"Welcome to nuqql-matrixd-rs!\r\n").await {
-        println!("Error sending to client: {err}");
-    }
-    loop {
-        match receive(&mut stream).await {
-            Ok(msg) => print!("{msg}"),
-            Err(err) => {
-                println!("Error receiving from client: {err}");
-                return;
+    async fn receive(stream: &mut TcpStream) -> std::io::Result<String> {
+        let mut buf = String::new();
+        let mut stream = BufReader::new(stream.take(MAX_MSG_LENGTH));
+        loop {
+            if buf.ends_with("\r\n") {
+                return Ok(buf);
+            }
+            if stream.read_line(&mut buf).await? == 0 {
+                return Err(std::io::ErrorKind::UnexpectedEof.into());
             }
         }
+    }
+
+    async fn handle_client(&mut self) {
+        if let Err(err) = Self::send(&mut self.stream, b"Welcome to nuqql-matrixd-rs!\r\n").await {
+            println!("Error sending to client: {err}");
+        }
+        loop {
+            match Self::receive(&mut self.stream).await {
+                Ok(msg) => print!("{msg}"),
+                Err(err) => {
+                    println!("Error receiving from client: {err}");
+                    return;
+                }
+            }
+        }
+    }
+
+    fn new(stream: TcpStream) -> Self {
+        Client { stream: stream }
     }
 }
 
@@ -44,6 +54,6 @@ pub async fn run_server() -> std::io::Result<()> {
         let (stream, _) = listener.accept().await?;
 
         // only one client connection is allowed at the same time
-        handle_client(stream).await;
+        Client::new(stream).handle_client().await;
     }
 }
