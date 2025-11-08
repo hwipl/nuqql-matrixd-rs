@@ -5,7 +5,8 @@ use tokio::sync::mpsc;
 const MAX_MSG_LENGTH: u64 = 128 * 1024;
 
 struct Client {
-    stream: TcpStream,
+    from_client: mpsc::Receiver<String>,
+    to_client: mpsc::Sender<String>,
 }
 
 impl Client {
@@ -27,16 +28,16 @@ impl Client {
     }
 
     async fn handle_client(
-        &mut self,
+        stream: &mut TcpStream,
         from_client: mpsc::Sender<String>,
         mut to_client: mpsc::Receiver<String>,
     ) {
-        if let Err(err) = Self::send(&mut self.stream, b"Welcome to nuqql-matrixd-rs!\r\n").await {
+        if let Err(err) = Self::send(stream, b"Welcome to nuqql-matrixd-rs!\r\n").await {
             println!("Error sending to client: {err}");
         }
         loop {
             tokio::select! {
-                msg = Self::receive(&mut self.stream) => match msg {
+                msg = Self::receive(stream) => match msg {
                     Ok(msg) => {
                         if let Err(err) = from_client.send(msg).await {
                             println!("Error sending client message to receive channel: {err}");
@@ -49,7 +50,7 @@ impl Client {
                     }
                 },
                 Some(msg) = to_client.recv() => {
-                    if let Err(err) = Self::send(&mut self.stream, &msg.as_bytes()).await {
+                    if let Err(err) = Self::send(stream, &msg.as_bytes()).await {
                         println!("Error sending to client: {err}");
                         return;
                     }
@@ -58,8 +59,24 @@ impl Client {
         }
     }
 
-    fn new(stream: TcpStream) -> Self {
-        Client { stream: stream }
+    fn new(mut stream: TcpStream) -> Self {
+        let (from_client_tx, from_client_rx) = mpsc::channel(1);
+        let (to_client_tx, to_client_rx) = mpsc::channel(1);
+        tokio::spawn(async move {
+            Self::handle_client(&mut stream, from_client_tx, to_client_rx).await
+        });
+        Client {
+            from_client: from_client_rx,
+            to_client: to_client_tx,
+        }
+    }
+
+    async fn get_message(&mut self) -> Option<String> {
+        self.from_client.recv().await
+    }
+
+    async fn send_message(&mut self, msg: String) -> Result<(), impl std::error::Error> {
+        self.to_client.send(msg).await
     }
 }
 
@@ -72,13 +89,10 @@ pub async fn run_server() -> std::io::Result<()> {
         let (stream, _) = listener.accept().await?;
 
         // only one client connection is allowed at the same time
-        let (from_client_tx, mut from_client_rx) = mpsc::channel(1);
-        let (to_client_tx, to_client_rx) = mpsc::channel(1);
         let mut client = Client::new(stream);
-        tokio::spawn(async move { client.handle_client(from_client_tx, to_client_rx).await });
-        while let Some(msg) = from_client_rx.recv().await {
+        while let Some(msg) = client.get_message().await {
             print!("{msg}");
-            if let Err(err) = to_client_tx.send(msg).await {
+            if let Err(err) = client.send_message(msg).await {
                 println!("Error sending message to send channel: {err}");
                 break;
             }
