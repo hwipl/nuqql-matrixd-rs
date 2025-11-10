@@ -32,9 +32,6 @@ impl Client {
         from_client: mpsc::Sender<String>,
         mut to_client: mpsc::Receiver<String>,
     ) {
-        if let Err(err) = Self::send(stream, b"Welcome to nuqql-matrixd-rs!\r\n").await {
-            println!("Error sending to client: {err}");
-        }
         loop {
             tokio::select! {
                 msg = Self::receive(stream) => match msg {
@@ -46,7 +43,7 @@ impl Client {
                     }
                     Err(err) => {
                         println!("Error receiving from client: {err}");
-                        return
+                        return;
                     }
                 },
                 Some(msg) = to_client.recv() => {
@@ -80,22 +77,73 @@ impl Client {
     }
 }
 
+struct Server {
+    clients_tx: mpsc::Sender<Client>,
+    clients_rx: mpsc::Receiver<Client>,
+}
+
+impl Server {
+    async fn handle_clients(listener: TcpListener, clients_tx: mpsc::Sender<Client>) {
+        loop {
+            match listener.accept().await {
+                Ok((stream, _)) => {
+                    let client = Client::new(stream);
+                    if let Err(err) = clients_tx.send(client).await {
+                        println!("{err}");
+                        return;
+                    }
+                }
+                Err(err) => {
+                    println!("Error accepting client connection: {err}");
+                    return;
+                }
+            }
+        }
+    }
+
+    fn new() -> Self {
+        let (clients_tx, clients_rx) = mpsc::channel(1);
+        Server {
+            clients_tx: clients_tx,
+            clients_rx: clients_rx,
+        }
+    }
+
+    async fn run(&self) -> std::io::Result<()> {
+        let listener = TcpListener::bind("127.0.0.1:32000").await?;
+
+        println!("Server listening on: {}", listener.local_addr()?);
+
+        let clients_tx = self.clients_tx.clone();
+        tokio::spawn(async move { Self::handle_clients(listener, clients_tx).await });
+        Ok(())
+    }
+
+    async fn get_client(&mut self) -> Option<Client> {
+        self.clients_rx.recv().await
+    }
+}
+
 pub async fn run_server() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:32000").await?;
+    let mut server = Server::new();
+    server.run().await?;
 
-    println!("Server listening on: {}", listener.local_addr()?);
-
-    loop {
-        let (stream, _) = listener.accept().await?;
-
-        // only one client connection is allowed at the same time
-        let mut client = Client::new(stream);
+    // only one client connection is allowed at the same time
+    while let Some(mut client) = server.get_client().await {
+        if let Err(err) = client
+            .send_message("Welcome to nuqql-matrixd-rs!\r\n".into())
+            .await
+        {
+            println!("Error sending welcome message to client: {err}");
+            continue;
+        }
         while let Some(msg) = client.get_message().await {
             print!("{msg}");
             if let Err(err) = client.send_message(msg).await {
-                println!("Error sending message to send channel: {err}");
+                println!("Error sending message back to client: {err}");
                 break;
             }
         }
     }
+    Ok(())
 }
