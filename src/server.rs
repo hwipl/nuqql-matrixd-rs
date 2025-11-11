@@ -1,4 +1,4 @@
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, ReadHalf, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 
@@ -10,11 +10,11 @@ struct Client {
 }
 
 impl Client {
-    async fn send(stream: &mut TcpStream, bytes: &[u8]) -> std::io::Result<()> {
+    async fn send(stream: &mut WriteHalf<TcpStream>, bytes: &[u8]) -> std::io::Result<()> {
         stream.write_all(bytes).await
     }
 
-    async fn receive(stream: &mut TcpStream) -> std::io::Result<String> {
+    async fn receive(stream: &mut ReadHalf<TcpStream>) -> std::io::Result<String> {
         let mut buf = String::new();
         let mut stream = BufReader::new(stream.take(MAX_MSG_LENGTH));
         loop {
@@ -27,41 +27,38 @@ impl Client {
         }
     }
 
-    async fn handle_client(
-        stream: &mut TcpStream,
-        from_client: mpsc::Sender<String>,
-        mut to_client: mpsc::Receiver<String>,
-    ) {
+    async fn handle_rx(mut stream: ReadHalf<TcpStream>, from_client: mpsc::Sender<String>) {
         loop {
-            tokio::select! {
-                msg = Self::receive(stream) => match msg {
-                    Ok(msg) => {
-                        if let Err(err) = from_client.send(msg).await {
-                            println!("Error sending client message to receive channel: {err}");
-                            return;
-                        }
-                    }
-                    Err(err) => {
-                        println!("Error receiving from client: {err}");
+            match Self::receive(&mut stream).await {
+                Ok(msg) => {
+                    if let Err(err) = from_client.send(msg).await {
+                        println!("Error sending client message to receive channel: {err}");
                         return;
                     }
-                },
-                Some(msg) = to_client.recv() => {
-                    if let Err(err) = Self::send(stream, &msg.as_bytes()).await {
-                        println!("Error sending to client: {err}");
-                        return;
-                    }
+                }
+                Err(err) => {
+                    println!("Error receiving from client: {err}");
+                    return;
                 }
             }
         }
     }
 
-    fn new(mut stream: TcpStream) -> Self {
+    async fn handle_tx(mut stream: WriteHalf<TcpStream>, mut to_client: mpsc::Receiver<String>) {
+        while let Some(msg) = to_client.recv().await {
+            if let Err(err) = Self::send(&mut stream, &msg.as_bytes()).await {
+                println!("Error sending to client: {err}");
+                return;
+            }
+        }
+    }
+
+    fn new(stream: TcpStream) -> Self {
         let (from_client_tx, from_client_rx) = mpsc::channel(1);
         let (to_client_tx, to_client_rx) = mpsc::channel(1);
-        tokio::spawn(async move {
-            Self::handle_client(&mut stream, from_client_tx, to_client_rx).await
-        });
+        let (rx, tx) = tokio::io::split(stream);
+        tokio::spawn(async move { Self::handle_rx(rx, from_client_tx).await });
+        tokio::spawn(async move { Self::handle_tx(tx, to_client_rx).await });
         Client {
             from_client: from_client_rx,
             to_client: to_client_tx,
