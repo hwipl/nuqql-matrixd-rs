@@ -75,58 +75,28 @@ impl Client {
 }
 
 struct Server {
-    clients_tx: mpsc::Sender<Client>,
-    clients_rx: mpsc::Receiver<Client>,
+    listener: TcpListener,
 }
 
 impl Server {
-    async fn handle_clients(listener: TcpListener, clients_tx: mpsc::Sender<Client>) {
-        loop {
-            match listener.accept().await {
-                Ok((stream, _)) => {
-                    let client = Client::new(stream);
-                    if let Err(err) = clients_tx.send(client).await {
-                        println!("{err}");
-                        return;
-                    }
-                }
-                Err(err) => {
-                    println!("Error accepting client connection: {err}");
-                    return;
-                }
-            }
-        }
-    }
-
-    fn new() -> Self {
-        let (clients_tx, clients_rx) = mpsc::channel(1);
-        Server {
-            clients_tx: clients_tx,
-            clients_rx: clients_rx,
-        }
-    }
-
-    async fn run(&self) -> std::io::Result<()> {
+    async fn listen() -> std::io::Result<Server> {
         let listener = TcpListener::bind("127.0.0.1:32000").await?;
-
         println!("Server listening on: {}", listener.local_addr()?);
-
-        let clients_tx = self.clients_tx.clone();
-        tokio::spawn(async move { Self::handle_clients(listener, clients_tx).await });
-        Ok(())
+        Ok(Server { listener })
     }
 
-    async fn get_client(&mut self) -> Option<Client> {
-        self.clients_rx.recv().await
+    async fn next(&self) -> std::io::Result<Client> {
+        let (stream, _) = self.listener.accept().await?;
+        Ok(Client::new(stream))
     }
 }
 
 pub async fn run_server() -> std::io::Result<()> {
-    let mut server = Server::new();
-    server.run().await?;
+    let server = Server::listen().await?;
 
-    // only one client connection is allowed at the same time
-    while let Some(mut client) = server.get_client().await {
+    // only one client connection is handled at the same time
+    loop {
+        let mut client = server.next().await?;
         if let Err(err) = client
             .send_message("Welcome to nuqql-matrixd-rs!\r\n".into())
             .await
@@ -142,5 +112,4 @@ pub async fn run_server() -> std::io::Result<()> {
             }
         }
     }
-    Ok(())
 }
