@@ -1,3 +1,4 @@
+mod message;
 mod server;
 
 use server::{Client, Server};
