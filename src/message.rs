@@ -1,4 +1,4 @@
-enum Message {
+pub enum Message {
     // info
     // info: <msg>
     Info {
@@ -155,4 +155,27 @@ enum Message {
     // get help
     // help
     Help,
+}
+
+//impl std::str::FromStr for Message {
+//    type Err = ();
+//
+//    fn from_str(s: &str) -> Result<Self, Self::Err> {
+//        Ok(Message::Info { message: s.into() })
+//    }
+//}
+
+impl From<String> for Message {
+    fn from(s: String) -> Self {
+        Message::Info { message: s }
+    }
+}
+
+impl From<Message> for String {
+    fn from(m: Message) -> Self {
+        match m {
+            Message::Info { message } => message,
+            _ => "".into(),
+        }
+    }
 }

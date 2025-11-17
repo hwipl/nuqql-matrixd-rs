@@ -1,9 +1,10 @@
 mod message;
 mod server;
 
+use crate::message::Message;
 use server::{Client, Server};
 
-async fn get_message(client: &mut Option<Client>) -> Option<Option<String>> {
+async fn get_message(client: &mut Option<Client>) -> Option<Option<Message>> {
     match client.as_mut() {
         Some(client) => Some(client.get_message().await),
         None => None,
@@ -22,10 +23,12 @@ async fn run_server() -> std::io::Result<()> {
                 Ok(mut c) => {
                     if client.is_some() {
                         // client already connected, decline connection
-                        _ = c.send_message("info: client already connected\r\n".into()).await;
+                        // FIXME
+                        _ = c.send_message(Message::Info{message: "info: client already connected\r\n".into()}).await;
                         continue;
                     }
-                    if let Err(err) = c.send_message("info: Welcome to nuqql-matrixd-rs!\r\n".into()).await {
+                    // FIXME
+                    if let Err(err) = c.send_message(Message::Info{message: "info: Welcome to nuqql-matrixd-rs!\r\n".into()}).await {
                         println!("Error sending welcome message to client: {err}");
                         continue;
                     }
@@ -41,7 +44,9 @@ async fn run_server() -> std::io::Result<()> {
             // handle message from client
             Some(msg) = get_message(&mut client) => match msg {
                 Some(msg) => {
+                    let msg = String::from(msg); // FIXME
                     print!("{msg}");
+                    let msg = Message::from(msg); // FIXME
                     if let Err(err) = client.as_mut().unwrap().send_message(msg).await {
                         // client broken?
                         println!("Error sending message back to client: {err}");

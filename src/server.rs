@@ -1,3 +1,4 @@
+use crate::message::Message;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, ReadHalf, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
@@ -5,8 +6,8 @@ use tokio::sync::mpsc;
 const MAX_MSG_LENGTH: u64 = 128 * 1024;
 
 pub struct Client {
-    from_client: mpsc::Receiver<String>,
-    to_client: mpsc::Sender<String>,
+    from_client: mpsc::Receiver<Message>,
+    to_client: mpsc::Sender<Message>,
 }
 
 impl Client {
@@ -27,11 +28,11 @@ impl Client {
         }
     }
 
-    async fn handle_rx(mut stream: ReadHalf<TcpStream>, from_client: mpsc::Sender<String>) {
+    async fn handle_rx(mut stream: ReadHalf<TcpStream>, from_client: mpsc::Sender<Message>) {
         loop {
             match Self::receive(&mut stream).await {
                 Ok(msg) => {
-                    if let Err(err) = from_client.send(msg).await {
+                    if let Err(err) = from_client.send(msg.into()).await {
                         println!("Error sending client message to receive channel: {err}");
                         return;
                     }
@@ -44,8 +45,9 @@ impl Client {
         }
     }
 
-    async fn handle_tx(mut stream: WriteHalf<TcpStream>, mut to_client: mpsc::Receiver<String>) {
+    async fn handle_tx(mut stream: WriteHalf<TcpStream>, mut to_client: mpsc::Receiver<Message>) {
         while let Some(msg) = to_client.recv().await {
+            let msg = String::from(msg);
             if let Err(err) = Self::send(&mut stream, &msg.as_bytes()).await {
                 println!("Error sending to client: {err}");
                 return;
@@ -65,14 +67,14 @@ impl Client {
         }
     }
 
-    pub async fn get_message(&mut self) -> Option<String> {
+    pub async fn get_message(&mut self) -> Option<Message> {
         self.from_client.recv().await
     }
 
     pub async fn send_message(
         &mut self,
-        msg: String,
-    ) -> Result<(), mpsc::error::SendError<String>> {
+        msg: Message,
+    ) -> Result<(), mpsc::error::SendError<Message>> {
         self.to_client.send(msg).await
     }
 }
