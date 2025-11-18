@@ -165,6 +165,95 @@ pub enum Message {
 //    }
 //}
 
+fn parse(s: &str) -> Option<Message> {
+    // messages:
+    //
+    let s = &s[..s.len() - 2];
+    let s: Vec<&str> = s.split(' ').collect();
+    if s.len() == 0 {
+        return None;
+    }
+    match s[0] {
+        // info: <msg>
+        "info:" => parse_info(s),
+        // account: <id> <name> <protocol> <user> <status>
+        "account:" => parse_account(s),
+        // account list
+        // account add <protocol> <user> <password>
+        // account <id> delete
+        // account <id> buddies [online]
+        // account <id> collect
+        // account <id> send <user> <msg>
+        // account <id> status get
+        // account <id> status set <status>
+        // account <id> chat list
+        // account <id> chat join <chat>
+        // account <id> chat part <chat>
+        // account <id> chat send <chat> <msg>
+        // account <id> chat users <chat>
+        // account <id> chat invite <chat> <user>
+        "account" => parse_account_command(s),
+        // buddy: <acc_id> status: <status> name: <name> alias: [alias]
+        "buddy:" => parse_buddy(s),
+        // message: <acc_id> <destination> <timestamp> <sender> <msg>
+        "message:" => parse_message(s),
+        // status: account <acc_id> status: <status>
+        "status:" => parse_status(s),
+        // chat: msg: <acc_id> <chat> <timestamp> <sender> <message>
+        // chat: list: <acc_id> <chat_id> <chat_alias> <nick>
+        // chat: user: <acc_id> <chat> <name> <alias> <state>
+        "chat:" => parse_chat(s),
+        // version
+        "version" => Some(Message::Version),
+        // bye
+        "bye" => Some(Message::Bye),
+        // quit
+        "quit" => Some(Message::Quit),
+        // help
+        "help" => Some(Message::Help),
+        _ => None,
+    }
+}
+
+fn parse_message(s: Vec<&str>) -> Option<Message> {
+    // TODO
+    None
+}
+
+fn parse_status(s: Vec<&str>) -> Option<Message> {
+    // TODO
+    None
+}
+fn parse_account(s: Vec<&str>) -> Option<Message> {
+    // TODO
+    None
+}
+
+fn parse_account_command(s: Vec<&str>) -> Option<Message> {
+    // TODO
+    None
+}
+
+fn parse_buddy(s: Vec<&str>) -> Option<Message> {
+    // TODO
+    None
+}
+
+fn parse_chat(s: Vec<&str>) -> Option<Message> {
+    // TODO
+    None
+}
+
+fn parse_info(s: Vec<&str>) -> Option<Message> {
+    if s.len() < 2 {
+        None
+    } else {
+        Some(Message::Info {
+            message: s[1..].join(" "),
+        })
+    }
+}
+
 impl From<String> for Message {
     fn from(s: String) -> Self {
         Message::Info { message: s }
