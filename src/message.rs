@@ -174,6 +174,7 @@ fn parse(s: &str) -> Option<Message> {
         return None;
     }
     match s[0] {
+        // TODO: error?
         // info: <msg>
         "info:" => parse_info(s),
         // account: <id> <name> <protocol> <user> <status>
@@ -216,8 +217,17 @@ fn parse(s: &str) -> Option<Message> {
 }
 
 fn parse_message(s: Vec<&str>) -> Option<Message> {
-    // TODO
-    None
+    // message: <acc_id> <destination> <timestamp> <sender> <msg>
+    if s.len() < 6 {
+        return None;
+    }
+    Some(Message::Message {
+        account_id: s[1].into(),
+        destination: s[2].into(),
+        timestamp: s[3].into(),
+        sender: s[4].into(),
+        message: s[5..].join(" "),
+    })
 }
 
 fn parse_status(s: Vec<&str>) -> Option<Message> {
@@ -225,8 +235,17 @@ fn parse_status(s: Vec<&str>) -> Option<Message> {
     None
 }
 fn parse_account(s: Vec<&str>) -> Option<Message> {
-    // TODO
-    None
+    // account: <id> <name> <protocol> <user> <status>
+    if s.len() < 6 {
+        return None;
+    }
+    Some(Message::Account {
+        id: s[1].into(),
+        name: s[2].into(),
+        protocol: s[3].into(),
+        user: s[4].into(),
+        status: s[5].into(),
+    })
 }
 
 fn parse_account_command(s: Vec<&str>) -> Option<Message> {
@@ -235,8 +254,16 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
 }
 
 fn parse_buddy(s: Vec<&str>) -> Option<Message> {
-    // TODO
-    None
+    // buddy: <acc_id> status: <status> name: <name> alias: [alias]
+    if s.len() < 7 {
+        return None;
+    }
+    Some(Message::Buddy {
+        account_id: s[1].into(),
+        status: s[3].into(),
+        name: s[5].into(),
+        alias: (*s.get(7).unwrap_or(&"")).into(),
+    })
 }
 
 fn parse_chat(s: Vec<&str>) -> Option<Message> {
@@ -245,13 +272,13 @@ fn parse_chat(s: Vec<&str>) -> Option<Message> {
 }
 
 fn parse_info(s: Vec<&str>) -> Option<Message> {
+    // info: <msg>
     if s.len() < 2 {
-        None
-    } else {
-        Some(Message::Info {
-            message: s[1..].join(" "),
-        })
+        return None;
     }
+    Some(Message::Info {
+        message: s[1..].join(" "),
+    })
 }
 
 impl From<String> for Message {
