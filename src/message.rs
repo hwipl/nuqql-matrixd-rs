@@ -231,8 +231,14 @@ fn parse_message(s: Vec<&str>) -> Option<Message> {
 }
 
 fn parse_status(s: Vec<&str>) -> Option<Message> {
-    // TODO
-    None
+    // status: account <acc_id> status: <status>
+    if s.len() < 5 {
+        return None;
+    }
+    Some(Message::Status {
+        account_id: s[2].into(),
+        status: s[4].into(),
+    })
 }
 fn parse_account(s: Vec<&str>) -> Option<Message> {
     // account: <id> <name> <protocol> <user> <status>
@@ -249,7 +255,172 @@ fn parse_account(s: Vec<&str>) -> Option<Message> {
 }
 
 fn parse_account_command(s: Vec<&str>) -> Option<Message> {
-    // TODO
+    // account list
+    // account add <protocol> <user> <password>
+    // account <id> delete
+    // account <id> buddies [online]
+    // account <id> collect
+    // account <id> send <user> <msg>
+    // account <id> status get
+    // account <id> status set <status>
+    // account <id> chat list
+    // account <id> chat join <chat>
+    // account <id> chat part <chat>
+    // account <id> chat send <chat> <msg>
+    // account <id> chat users <chat>
+    // account <id> chat invite <chat> <user>
+
+    if s.len() < 2 {
+        return None;
+    }
+
+    // account list
+    // account add <protocol> <user> <password>
+    match s[1] {
+        "list" => return Some(Message::AccountList),
+        "add" => {
+            if s.len() < 5 {
+                return None;
+            }
+            return Some(Message::AccountAdd {
+                protocol: s[2].into(),
+                user: s[3].into(),
+                password: s[4].into(),
+            });
+        }
+        _ => (),
+    }
+
+    if s.len() < 3 {
+        return None;
+    }
+
+    match s[2] {
+        // account <id> delete
+        "delete" => return Some(Message::AccountDelete { id: s[1].into() }),
+
+        // account <id> buddies [online]
+        "buddies" => {
+            return Some(Message::BuddyList {
+                account_id: s[1].into(),
+                status: (*s.get(3).unwrap_or(&"")).into(),
+            })
+        }
+
+        // account <id> collect
+        "collect" => {
+            return Some(Message::MessageCollect {
+                account_id: s[1].into(),
+            })
+        }
+
+        // account <id> send <user> <msg>
+        "send" => {
+            if s.len() < 5 {
+                return None;
+            }
+            return Some(Message::MessageSend {
+                account_id: s[1].into(),
+                destination: s[3].into(),
+                message: s[4..].join(" "),
+            });
+        }
+
+        // account <id> status get
+        // account <id> status set <status>
+        "status" => {
+            if s.len() < 4 {
+                return None;
+            }
+            match s[3] {
+                "get" => {
+                    return Some(Message::StatusGet {
+                        account_id: s[1].into(),
+                    })
+                }
+                "set" => {
+                    if s.len() < 5 {
+                        return None;
+                    }
+                    return Some(Message::StatusSet {
+                        account_id: s[1].into(),
+                        status: s[4].into(),
+                    });
+                }
+                _ => return None,
+            }
+        }
+
+        // account <id> chat list
+        // account <id> chat join <chat>
+        // account <id> chat part <chat>
+        // account <id> chat send <chat> <msg>
+        // account <id> chat users <chat>
+        // account <id> chat invite <chat> <user>
+        "chat" => {
+            if s.len() < 4 {
+                return None;
+            }
+            match s[3] {
+                "list" => {
+                    return Some(Message::ChatList {
+                        account_id: s[1].into(),
+                    })
+                }
+                "join" => {
+                    if s.len() < 5 {
+                        return None;
+                    }
+                    return Some(Message::ChatJoin {
+                        account_id: s[1].into(),
+                        chat: s[4].into(),
+                    });
+                }
+                "part" => {
+                    if s.len() < 5 {
+                        return None;
+                    }
+                    return Some(Message::ChatLeave {
+                        account_id: s[1].into(),
+                        chat: s[4].into(),
+                    });
+                }
+                "send" => {
+                    if s.len() < 6 {
+                        return None;
+                    }
+                    return Some(Message::ChatMessageSend {
+                        account_id: s[1].into(),
+                        chat: s[4].into(),
+                        message: s[5..].join(" "),
+                    });
+                }
+                "users" => {
+                    if s.len() < 5 {
+                        return None;
+                    }
+                    return Some(Message::ChatUserList {
+                        account_id: s[1].into(),
+                        chat: s[4].into(),
+                    });
+                }
+                "invite" => {
+                    if s.len() < 6 {
+                        return None;
+                    }
+                    return Some(Message::ChatUserInvite {
+                        account_id: s[1].into(),
+                        chat: s[4].into(),
+                        user: s[5].into(),
+                    });
+                }
+                _ => return None,
+            }
+        }
+
+        _ => (),
+    }
+
     None
 }
 
@@ -267,8 +438,45 @@ fn parse_buddy(s: Vec<&str>) -> Option<Message> {
 }
 
 fn parse_chat(s: Vec<&str>) -> Option<Message> {
-    // TODO
-    None
+    // chat: msg: <acc_id> <chat> <timestamp> <sender> <message>
+    // chat: list: <acc_id> <chat_id> <chat_alias> <nick>
+    // chat: user: <acc_id> <chat> <name> <alias> <state>
+    if s.len() < 6 {
+        return None;
+    }
+    match s[1] {
+        "msg:" => {
+            if s.len() < 7 {
+                return None;
+            }
+            Some(Message::ChatMessage {
+                account_id: s[2].into(),
+                chat: s[3].into(),
+                timestamp: s[4].into(),
+                sender: s[5].into(),
+                message: s[6..].join(" "),
+            })
+        }
+        "list:" => Some(Message::Chat {
+            account_id: s[2].into(),
+            chat: s[3].into(),
+            alias: s[4].into(),
+            nick: s[5].into(),
+        }),
+        "user:" => {
+            if s.len() < 7 {
+                return None;
+            }
+            Some(Message::ChatUser {
+                account_id: s[2].into(),
+                chat: s[3].into(),
+                user: s[4].into(),
+                alias: s[5].into(),
+                status: s[6].into(),
+            })
+        }
+        _ => None,
+    }
 }
 
 fn parse_info(s: Vec<&str>) -> Option<Message> {
