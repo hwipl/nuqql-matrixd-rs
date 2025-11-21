@@ -32,7 +32,8 @@ impl Client {
         loop {
             match Self::receive(&mut stream).await {
                 Ok(msg) => {
-                    if let Err(err) = from_client.send(msg.into()).await {
+                    let Ok(msg) = msg.parse() else { continue };
+                    if let Err(err) = from_client.send(msg).await {
                         println!("Error sending client message to receive channel: {err}");
                         return;
                     }
@@ -47,7 +48,7 @@ impl Client {
 
     async fn handle_tx(mut stream: WriteHalf<TcpStream>, mut to_client: mpsc::Receiver<Message>) {
         while let Some(msg) = to_client.recv().await {
-            let msg = String::from(msg);
+            let msg = msg.to_string();
             if let Err(err) = Self::send(&mut stream, &msg.as_bytes()).await {
                 println!("Error sending to client: {err}");
                 return;

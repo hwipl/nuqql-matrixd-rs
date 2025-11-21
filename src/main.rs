@@ -44,9 +44,7 @@ async fn run_server() -> std::io::Result<()> {
             // handle message from client
             Some(msg) = get_message(&mut client) => match msg {
                 Some(msg) => {
-                    let msg = String::from(msg); // FIXME
                     print!("{msg}");
-                    let msg = Message::from(msg); // FIXME
                     if let Err(err) = client.as_mut().unwrap().send_message(msg).await {
                         // client broken?
                         println!("Error sending message back to client: {err}");

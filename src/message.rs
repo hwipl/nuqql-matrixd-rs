@@ -89,7 +89,7 @@ pub enum Message {
         nick: String,
     },
     // list chats
-    // account 0 chat list
+    // account <acc_id> chat list
     ChatList {
         account_id: String,
     },
@@ -157,13 +157,13 @@ pub enum Message {
     Help,
 }
 
-//impl std::str::FromStr for Message {
-//    type Err = ();
-//
-//    fn from_str(s: &str) -> Result<Self, Self::Err> {
-//        Ok(Message::Info { message: s.into() })
-//    }
-//}
+impl std::str::FromStr for Message {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse(s).ok_or(())
+    }
+}
 
 fn parse(s: &str) -> Option<Message> {
     // messages:
@@ -489,17 +489,111 @@ fn parse_info(s: Vec<&str>) -> Option<Message> {
     })
 }
 
-impl From<String> for Message {
-    fn from(s: String) -> Self {
-        Message::Info { message: s }
-    }
-}
-
-impl From<Message> for String {
-    fn from(m: Message) -> Self {
-        match m {
-            Message::Info { message } => message,
-            _ => "".into(),
+impl std::fmt::Display for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Message::Info { message } => write!(f, "info: {message}\r\n"),
+            Message::Account {
+                id,
+                name,
+                protocol,
+                user,
+                status,
+            } => write!(f, "account: {id} {name} {protocol} {user} {status}\r\n"),
+            Message::AccountList => write!(f, "account list\r\n"),
+            Message::AccountAdd {
+                protocol,
+                user,
+                password,
+            } => write!(f, "account add {protocol} {user} {password}\r\n"),
+            Message::AccountDelete { id } => write!(f, "account {id} delete\r\n"),
+            Message::Buddy {
+                account_id,
+                status,
+                name,
+                alias,
+            } => write!(
+                f,
+                // TODO: alias OK like this?
+                "buddy: {account_id} status: {status} name: {name} alias: {alias}\r\n"
+            ),
+            Message::BuddyList { account_id, status } => {
+                // TODO: status OK like this?
+                write! {f, "account {account_id} buddies {status}\r\n"}
+            }
+            Message::Message {
+                account_id,
+                destination,
+                timestamp,
+                sender,
+                message,
+            } => write!(
+                f,
+                "message: {account_id} {destination} {timestamp} {sender} {message}\r\n"
+            ),
+            Message::MessageCollect { account_id } => write!(f, "account {account_id} collect\r\n"),
+            Message::MessageSend {
+                account_id,
+                destination,
+                message,
+            } => write!(f, "account {account_id} send {destination} {message}\r\n"),
+            Message::Status { account_id, status } => {
+                write!(f, "status: account {account_id} status: {status}\r\n")
+            }
+            Message::StatusGet { account_id } => write!(f, "account {account_id} status get\r\n"),
+            Message::StatusSet { account_id, status } => {
+                write!(f, "account {account_id} status set {status}\r\n")
+            }
+            Message::Chat {
+                account_id,
+                chat,
+                alias,
+                nick,
+            } => write!(f, "chat: list: {account_id} {chat} {alias} {nick}\r\n"),
+            Message::ChatList { account_id } => write!(f, "account {account_id} chat list\r\n"),
+            Message::ChatJoin { account_id, chat } => {
+                write!(f, "account {account_id} chat join {chat}\r\n")
+            }
+            Message::ChatLeave { account_id, chat } => {
+                write!(f, "account {account_id} chat part {chat}\r\n")
+            }
+            Message::ChatMessage {
+                account_id,
+                chat,
+                timestamp,
+                sender,
+                message,
+            } => write!(
+                f,
+                "chat: msg: {account_id} {chat} {timestamp} {sender} {message}\r\n"
+            ),
+            Message::ChatMessageSend {
+                account_id,
+                chat,
+                message,
+            } => write!(f, "account {account_id} chat send {chat} {message}\r\n"),
+            Message::ChatUser {
+                account_id,
+                chat,
+                user,
+                alias,
+                status,
+            } => write!(
+                f,
+                "chat: user: {account_id} {chat} {user} {alias} {status}\r\n"
+            ),
+            Message::ChatUserList { account_id, chat } => {
+                write!(f, "account {account_id} chat users {chat}\r\n")
+            }
+            Message::ChatUserInvite {
+                account_id,
+                chat,
+                user,
+            } => write!(f, "account {account_id} chat invite {chat} {user}\r\n"),
+            Message::Version => write!(f, "version\r\n"),
+            Message::Bye => write!(f, "bye\r\n"),
+            Message::Quit => write!(f, "quit\r\n"),
+            Message::Help => write!(f, "help\r\n"),
         }
     }
 }
