@@ -1,3 +1,4 @@
+#[derive(Debug, Eq, PartialEq)]
 pub enum Message {
     // info
     // info: <msg>
@@ -594,6 +595,155 @@ impl std::fmt::Display for Message {
             Message::Bye => write!(f, "bye\r\n"),
             Message::Quit => write!(f, "quit\r\n"),
             Message::Help => write!(f, "help\r\n"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_message() {
+        for msg in vec![
+            Message::Info {
+                message: "hello".into(),
+            },
+            Message::Account {
+                id: "1".into(),
+                name: "matrix".into(),
+                protocol: "matrix".into(),
+                user: "user".into(),
+                status: "online".into(),
+            },
+            Message::AccountList,
+            Message::AccountAdd {
+                protocol: "matrix".into(),
+                user: "user".into(),
+                password: "password".into(),
+            },
+            Message::AccountDelete { id: "1".into() },
+            Message::Buddy {
+                account_id: "1".into(),
+                status: "online".into(),
+                name: "user".into(),
+                alias: "".into(),
+            },
+            Message::Buddy {
+                account_id: "1".into(),
+                status: "online".into(),
+                name: "user".into(),
+                alias: "alias".into(),
+            },
+            Message::BuddyList {
+                account_id: "1".into(),
+                status: "".into(),
+            },
+            Message::BuddyList {
+                account_id: "1".into(),
+                status: "online".into(),
+            },
+            Message::Message {
+                account_id: "1".into(),
+                destination: "other_user".into(),
+                timestamp: "1700000000".into(),
+                sender: "me".into(),
+                message: "".into(),
+            },
+            Message::Message {
+                account_id: "1".into(),
+                destination: "other_user".into(),
+                timestamp: "1700000000".into(),
+                sender: "me".into(),
+                message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
+            },
+            Message::MessageCollect {
+                account_id: "1".into(),
+            },
+            Message::MessageSend {
+                account_id: "1".into(),
+                destination: "other_user".into(),
+                message: "".into(),
+            },
+            Message::MessageSend {
+                account_id: "1".into(),
+                destination: "other_user".into(),
+                message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
+            },
+            Message::Status {
+                account_id: "1".into(),
+                status: "online".into(),
+            },
+            Message::StatusGet {
+                account_id: "1".into(),
+            },
+            Message::StatusSet {
+                account_id: "1".into(),
+                status: "online".into(),
+            },
+            Message::Chat {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+                alias: "chat_alias".into(),
+                nick: "my_name".into(),
+            },
+            Message::ChatList {
+                account_id: "1".into(),
+            },
+            Message::ChatJoin {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+            },
+            Message::ChatLeave {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+            },
+            Message::ChatMessage {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+                timestamp: "1700000000".into(),
+                sender: "some_user".into(),
+                message: "".into(),
+            },
+            Message::ChatMessage {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+                timestamp: "1700000000".into(),
+                sender: "some_user".into(),
+                message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
+            },
+            Message::ChatMessageSend {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+                message: "".into(),
+            },
+            Message::ChatMessageSend {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+                message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
+            },
+            Message::ChatUser {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+                user: "user".into(),
+                alias: "alias".into(),
+                status: "online".into(),
+            },
+            Message::ChatUserList {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+            },
+            Message::ChatUserInvite {
+                account_id: "1".into(),
+                chat: "some_chat".into(),
+                user: "user".into(),
+            },
+            Message::Version,
+            Message::Bye,
+            Message::Quit,
+            Message::Help,
+        ] {
+            assert_eq!(msg, msg.to_string().parse().unwrap());
         }
     }
 }
