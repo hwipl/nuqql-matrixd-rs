@@ -3,12 +3,30 @@ mod server;
 
 use crate::message::Message;
 use server::{Client, Server};
+use tokio::sync::mpsc;
 
 async fn get_message(client: &mut Option<Client>) -> Option<Option<Message>> {
     match client.as_mut() {
         Some(client) => Some(client.get_message().await),
         None => None,
     }
+}
+
+async fn handle_message(
+    client: &mut Client,
+    msg: Message,
+) -> Result<(), mpsc::error::SendError<Message>> {
+    print!("{msg}");
+    match msg {
+        Message::Help => {
+            let reply = Message::Info {
+                message: "help text".into(),
+            };
+            return client.send_message(reply).await;
+        }
+        _ => (),
+    }
+    client.send_message(msg).await
 }
 
 async fn run_server() -> std::io::Result<()> {
@@ -44,10 +62,9 @@ async fn run_server() -> std::io::Result<()> {
             // handle message from client
             Some(msg) = get_message(&mut client) => match msg {
                 Some(msg) => {
-                    print!("{msg}");
-                    if let Err(err) = client.as_mut().unwrap().send_message(msg).await {
+                    if let Err(err) = handle_message(client.as_mut().unwrap(), msg).await {
                         // client broken?
-                        println!("Error sending message back to client: {err}");
+                        println!("Error handling message: {err}");
                         client = None;
                         continue;
                     }
