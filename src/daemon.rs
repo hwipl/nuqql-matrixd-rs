@@ -49,12 +49,10 @@ impl Daemon {
                     Ok(mut c) => {
                         if self.client.is_some() {
                             // client already connected, decline connection
-                            // FIXME
-                            _ = c.send_message(Message::Info{message: "info: client already connected\r\n".into()}).await;
+                            _ = c.send_message(Message::Info{message: "client already connected".into()}).await;
                             continue;
                         }
-                        // FIXME
-                        if let Err(err) = c.send_message(Message::Info{message: "info: Welcome to nuqql-matrixd-rs!\r\n".into()}).await {
+                        if let Err(err) = c.send_message(Message::Info{message: "Welcome to nuqql-matrixd-rs!".into()}).await {
                             println!("Error sending welcome message to client: {err}");
                             continue;
                         }
