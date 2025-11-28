@@ -27,17 +27,24 @@ impl Daemon {
         msg: Message,
     ) -> Result<(), mpsc::error::SendError<Message>> {
         print!("{msg}");
-        let client = self.client.as_mut().unwrap();
         match msg {
             Message::Help => {
                 let reply = Message::Info {
                     message: "help text".into(),
                 };
+                let client = self.client.as_mut().unwrap();
                 return client.send_message(reply).await;
             }
-            _ => (),
+            Message::Bye => {
+                // TODO: improve client disconnect?
+                self.client = None;
+                Ok(())
+            }
+            _ => {
+                let client = self.client.as_mut().unwrap();
+                client.send_message(msg).await
+            }
         }
-        client.send_message(msg).await
     }
 
     async fn run(&mut self) -> std::io::Result<()> {
@@ -49,6 +56,7 @@ impl Daemon {
                     Ok(mut c) => {
                         if self.client.is_some() {
                             // client already connected, decline connection
+                            // TODO: improve client disconnect?
                             _ = c.send_message(Message::Info{message: "client already connected".into()}).await;
                             continue;
                         }
