@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 struct Daemon {
     server: Server,
     client: Option<Client>,
+    done: bool,
 }
 
 impl Daemon {
@@ -12,6 +13,7 @@ impl Daemon {
         Daemon {
             server: server,
             client: None,
+            done: false,
         }
     }
 
@@ -40,6 +42,10 @@ impl Daemon {
                 self.client = None;
                 Ok(())
             }
+            Message::Quit => {
+                self.done = true;
+                Ok(())
+            }
             _ => {
                 let client = self.client.as_mut().unwrap();
                 client.send_message(msg).await
@@ -49,6 +55,10 @@ impl Daemon {
 
     async fn run(&mut self) -> std::io::Result<()> {
         loop {
+            if self.done {
+                println!("Stopping daemon...");
+                return Ok(());
+            }
             tokio::select! {
                 // handle new client connection
                 c = self.server.next() => match c {
