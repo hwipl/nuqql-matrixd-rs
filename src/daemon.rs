@@ -31,11 +31,8 @@ impl Daemon {
         print!("{msg}");
         match msg {
             Message::Help => {
-                let reply = Message::Info {
-                    message: "help text".into(),
-                };
                 let client = self.client.as_mut().unwrap();
-                return client.send_message(reply).await;
+                return client.send_message(Message::info_help()).await;
             }
             Message::Bye => {
                 // TODO: improve client disconnect?
@@ -67,10 +64,10 @@ impl Daemon {
                         if self.client.is_some() {
                             // client already connected, decline connection
                             // TODO: improve client disconnect?
-                            _ = c.send_message(Message::Info{message: "client already connected".into()}).await;
+                            _ = c.send_message(Message::info_already_connected()).await;
                             continue;
                         }
-                        if let Err(err) = c.send_message(Message::Info{message: "Welcome to nuqql-matrixd-rs!".into()}).await {
+                        if let Err(err) = c.send_message(Message::info_welcome()).await {
                             println!("Error sending welcome message to client: {err}");
                             continue;
                         }
