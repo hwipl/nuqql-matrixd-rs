@@ -43,6 +43,10 @@ impl Daemon {
                 self.done = true;
                 Ok(())
             }
+            Message::Version => {
+                let client = self.client.as_mut().unwrap();
+                return client.send_message(Message::info_version()).await;
+            }
             _ => {
                 let client = self.client.as_mut().unwrap();
                 client.send_message(msg).await

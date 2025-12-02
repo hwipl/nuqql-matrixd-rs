@@ -220,6 +220,11 @@ help
     show this help"#;
         Self::info(help)
     }
+
+    pub fn info_version() -> Self {
+        // TODO: improve
+        Self::info("nuqql-matrixd-rs v0.0.0-devel")
+    }
 }
 
 impl std::str::FromStr for Message {
