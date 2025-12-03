@@ -30,18 +30,24 @@ impl Client {
 
     async fn handle_rx(mut stream: ReadHalf<TcpStream>, from_client: mpsc::Sender<Message>) {
         loop {
-            match Self::receive(&mut stream).await {
-                Ok(msg) => {
-                    let Ok(msg) = msg.parse() else { continue };
-                    if let Err(err) = from_client.send(msg).await {
-                        println!("Error sending client message to receive channel: {err}");
+            tokio::select! {
+                // receive message and forward it to receiver
+                msg = Self::receive(&mut stream) => match msg {
+                    Ok(msg) => {
+                        let Ok(msg) = msg.parse() else { continue };
+                        if let Err(err) = from_client.send(msg).await {
+                            println!("Error sending client message to receive channel: {err}");
+                            return;
+                        }
+                    }
+                    Err(err) => {
+                        println!("Error receiving from client: {err}");
                         return;
                     }
-                }
-                Err(err) => {
-                    println!("Error receiving from client: {err}");
-                    return;
-                }
+                },
+
+                // abort if there is no receiver
+                _ = from_client.closed() => return,
             }
         }
     }

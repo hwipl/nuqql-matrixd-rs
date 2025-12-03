@@ -35,7 +35,6 @@ impl Daemon {
                 return client.send_message(Message::info_help()).await;
             }
             Message::Bye => {
-                // TODO: improve client disconnect?
                 self.client = None;
                 Ok(())
             }
@@ -67,7 +66,6 @@ impl Daemon {
                     Ok(mut c) => {
                         if self.client.is_some() {
                             // client already connected, decline connection
-                            // TODO: improve client disconnect?
                             _ = c.send_message(Message::info_already_connected()).await;
                             continue;
                         }
