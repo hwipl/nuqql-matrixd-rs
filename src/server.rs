@@ -4,6 +4,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 
 const MAX_MSG_LENGTH: u64 = 128 * 1024;
+const SEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 pub struct Client {
     from_client: mpsc::Receiver<Message>,
@@ -12,7 +13,9 @@ pub struct Client {
 
 impl Client {
     async fn send(stream: &mut WriteHalf<TcpStream>, bytes: &[u8]) -> std::io::Result<()> {
-        stream.write_all(bytes).await
+        tokio::time::timeout(SEND_TIMEOUT, stream.write_all(bytes))
+            .await
+            .unwrap_or(Err(std::io::ErrorKind::TimedOut.into()))
     }
 
     async fn receive(stream: &mut ReadHalf<TcpStream>) -> std::io::Result<String> {
