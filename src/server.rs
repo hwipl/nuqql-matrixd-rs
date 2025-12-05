@@ -31,7 +31,11 @@ impl Client {
         }
     }
 
-    async fn handle_rx(mut stream: ReadHalf<TcpStream>, from_client: mpsc::Sender<Message>) {
+    async fn handle_rx(
+        mut stream: ReadHalf<TcpStream>,
+        from_client: mpsc::Sender<Message>,
+        to_client: mpsc::Sender<Message>,
+    ) {
         loop {
             tokio::select! {
                 // receive message and forward it to receiver
@@ -51,6 +55,9 @@ impl Client {
 
                 // abort if there is no receiver
                 _ = from_client.closed() => return,
+
+                // abort if tx handler closed
+                _ = to_client.closed() => return,
             }
         }
     }
@@ -68,8 +75,9 @@ impl Client {
     fn new(stream: TcpStream) -> Self {
         let (from_client_tx, from_client_rx) = mpsc::channel(1);
         let (to_client_tx, to_client_rx) = mpsc::channel(1);
+        let to_client_tx_check = to_client_tx.clone();
         let (rx, tx) = tokio::io::split(stream);
-        tokio::spawn(async move { Self::handle_rx(rx, from_client_tx).await });
+        tokio::spawn(async move { Self::handle_rx(rx, from_client_tx, to_client_tx_check).await });
         tokio::spawn(async move { Self::handle_tx(tx, to_client_rx).await });
         Client {
             from_client: from_client_rx,
