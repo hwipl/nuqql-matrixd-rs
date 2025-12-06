@@ -1,10 +1,11 @@
 use crate::message::Message;
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, ReadHalf, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 
 const MAX_MSG_LENGTH: u64 = 128 * 1024;
-const SEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+pub const SEND_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub struct Client {
     from_client: mpsc::Receiver<Message>,
@@ -12,8 +13,12 @@ pub struct Client {
 }
 
 impl Client {
-    async fn send(stream: &mut WriteHalf<TcpStream>, bytes: &[u8]) -> std::io::Result<()> {
-        tokio::time::timeout(SEND_TIMEOUT, stream.write_all(bytes))
+    async fn send(
+        stream: &mut WriteHalf<TcpStream>,
+        timeout: Duration,
+        bytes: &[u8],
+    ) -> std::io::Result<()> {
+        tokio::time::timeout(timeout, stream.write_all(bytes))
             .await
             .unwrap_or(Err(std::io::ErrorKind::TimedOut.into()))
     }
@@ -62,23 +67,27 @@ impl Client {
         }
     }
 
-    async fn handle_tx(mut stream: WriteHalf<TcpStream>, mut to_client: mpsc::Receiver<Message>) {
+    async fn handle_tx(
+        mut stream: WriteHalf<TcpStream>,
+        mut to_client: mpsc::Receiver<Message>,
+        send_timeout: Duration,
+    ) {
         while let Some(msg) = to_client.recv().await {
             let msg = msg.to_string();
-            if let Err(err) = Self::send(&mut stream, &msg.as_bytes()).await {
+            if let Err(err) = Self::send(&mut stream, send_timeout, &msg.as_bytes()).await {
                 println!("Error sending to client: {err}");
                 return;
             }
         }
     }
 
-    fn new(stream: TcpStream) -> Self {
+    fn new(stream: TcpStream, send_timeout: Duration) -> Self {
         let (from_client_tx, from_client_rx) = mpsc::channel(1);
         let (to_client_tx, to_client_rx) = mpsc::channel(1);
         let to_client_tx_check = to_client_tx.clone();
         let (rx, tx) = tokio::io::split(stream);
         tokio::spawn(async move { Self::handle_rx(rx, from_client_tx, to_client_tx_check).await });
-        tokio::spawn(async move { Self::handle_tx(tx, to_client_rx).await });
+        tokio::spawn(async move { Self::handle_tx(tx, to_client_rx, send_timeout).await });
         Client {
             from_client: from_client_rx,
             to_client: to_client_tx,
@@ -99,17 +108,21 @@ impl Client {
 
 pub struct Server {
     listener: TcpListener,
+    send_timeout: Duration,
 }
 
 impl Server {
-    pub async fn listen() -> std::io::Result<Server> {
+    pub async fn listen(send_timeout: Duration) -> std::io::Result<Server> {
         let listener = TcpListener::bind("127.0.0.1:32000").await?;
         println!("Server listening on: {}", listener.local_addr()?);
-        Ok(Server { listener })
+        Ok(Server {
+            listener,
+            send_timeout,
+        })
     }
 
     pub async fn next(&self) -> std::io::Result<Client> {
         let (stream, _) = self.listener.accept().await?;
-        Ok(Client::new(stream))
+        Ok(Client::new(stream, self.send_timeout))
     }
 }
