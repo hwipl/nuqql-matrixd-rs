@@ -1,5 +1,5 @@
 use crate::message::Message;
-use crate::server::{Client, Server, MAX_MSG_LENGTH, SEND_TIMEOUT};
+use crate::server::{Client, Server, LISTEN_ADDRESS, MAX_MSG_LENGTH, SEND_TIMEOUT};
 use tokio::sync::mpsc;
 
 struct Daemon {
@@ -104,6 +104,6 @@ impl Daemon {
 }
 
 pub async fn run_daemon() -> std::io::Result<()> {
-    let server = Server::listen(MAX_MSG_LENGTH, SEND_TIMEOUT).await?;
+    let server = Server::listen(LISTEN_ADDRESS, MAX_MSG_LENGTH, SEND_TIMEOUT).await?;
     Daemon::new(server).run().await
 }

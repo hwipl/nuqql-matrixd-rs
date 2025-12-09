@@ -4,6 +4,7 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, ReadHal
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 
+pub const LISTEN_ADDRESS: &str = "127.0.0.1:32000";
 pub const MAX_MSG_LENGTH: u64 = 128 * 1024;
 pub const SEND_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -119,8 +120,12 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn listen(max_msg_length: u64, send_timeout: Duration) -> std::io::Result<Server> {
-        let listener = TcpListener::bind("127.0.0.1:32000").await?;
+    pub async fn listen(
+        address: &str,
+        max_msg_length: u64,
+        send_timeout: Duration,
+    ) -> std::io::Result<Server> {
+        let listener = TcpListener::bind(address).await?;
         println!("Server listening on: {}", listener.local_addr()?);
         Ok(Server {
             listener,
