@@ -126,12 +126,15 @@ impl Server {
         send_timeout: Duration,
     ) -> std::io::Result<Server> {
         let listener = TcpListener::bind(address).await?;
-        println!("Server listening on: {}", listener.local_addr()?);
         Ok(Server {
             listener,
             max_msg_length,
             send_timeout,
         })
+    }
+
+    pub fn listen_address(&self) -> std::io::Result<std::net::SocketAddr> {
+        self.listener.local_addr()
     }
 
     pub async fn next(&self) -> std::io::Result<Client> {

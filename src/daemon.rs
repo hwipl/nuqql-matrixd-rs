@@ -105,5 +105,6 @@ impl Daemon {
 
 pub async fn run_daemon() -> std::io::Result<()> {
     let server = Server::listen(LISTEN_ADDRESS, MAX_MSG_LENGTH, SEND_TIMEOUT).await?;
+    println!("Server listening on: {}", server.listen_address()?);
     Daemon::new(server).run().await
 }
