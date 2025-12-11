@@ -8,6 +8,22 @@ pub const LISTEN_ADDRESS: &str = "127.0.0.1:32000";
 pub const MAX_MSG_LENGTH: u64 = 128 * 1024;
 pub const SEND_TIMEOUT: Duration = Duration::from_secs(10);
 
+pub struct Config {
+    pub listen_address: String,
+    pub max_msg_length: u64,
+    pub send_timeout: Duration,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            listen_address: LISTEN_ADDRESS.into(),
+            max_msg_length: MAX_MSG_LENGTH,
+            send_timeout: SEND_TIMEOUT,
+        }
+    }
+}
+
 pub struct Client {
     from_client: mpsc::Receiver<Message>,
     to_client: mpsc::Sender<Message>,
@@ -114,23 +130,14 @@ impl Client {
 }
 
 pub struct Server {
+    config: Config,
     listener: TcpListener,
-    max_msg_length: u64,
-    send_timeout: Duration,
 }
 
 impl Server {
-    pub async fn listen(
-        address: &str,
-        max_msg_length: u64,
-        send_timeout: Duration,
-    ) -> std::io::Result<Server> {
-        let listener = TcpListener::bind(address).await?;
-        Ok(Server {
-            listener,
-            max_msg_length,
-            send_timeout,
-        })
+    pub async fn listen(config: Config) -> std::io::Result<Server> {
+        let listener = TcpListener::bind(&config.listen_address).await?;
+        Ok(Server { config, listener })
     }
 
     pub fn listen_address(&self) -> std::io::Result<std::net::SocketAddr> {
@@ -139,6 +146,10 @@ impl Server {
 
     pub async fn next(&self) -> std::io::Result<Client> {
         let (stream, _) = self.listener.accept().await?;
-        Ok(Client::new(stream, self.max_msg_length, self.send_timeout))
+        Ok(Client::new(
+            stream,
+            self.config.max_msg_length,
+            self.config.send_timeout,
+        ))
     }
 }
