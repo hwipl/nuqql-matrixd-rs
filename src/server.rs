@@ -153,3 +153,63 @@ impl Server {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // test closing the tx handler in handle_tx with a send timeout
+    #[tokio::test]
+    async fn test_handle_tx_close_with_send_timeout() {
+        // create config
+        let mut c = Config::default();
+        c.listen_address = "127.0.0.1:0".into();
+        c.send_timeout = Duration::from_secs(1); // set lower send timeout
+
+        // start server and connect to it without reading any data
+        let s = Server::listen(c).await.unwrap();
+        let _stream = TcpStream::connect(s.listen_address().unwrap())
+            .await
+            .unwrap();
+
+        // handle client connection in the server
+        let mut c = s.next().await.unwrap();
+        let sleep = tokio::time::sleep(Duration::from_secs(3));
+        tokio::pin!(sleep);
+        loop {
+            tokio::select! {
+                // send data until we cannot send any more and hit the send timeout in
+                // the tx handler
+                r = c.send_message(Message::info_help()) => match r {
+                    Ok(_) => (),
+                    Err(_) => break, // tx handler stopped in time
+                },
+                _ = &mut sleep => panic!("tx handler did not stop"), // tx handler did not stop in time
+            }
+        }
+
+        // rx handler should also be stopped now
+        assert_eq!(c.get_message().await, None);
+    }
+
+    // test closing the rx handler in handle_rx with client send half closed
+    #[tokio::test]
+    async fn test_handle_rx_close_shutdown() {
+        // create config
+        let mut c = Config::default();
+        c.listen_address = "127.0.0.1:0".into();
+
+        // start server and connect to it
+        let s = Server::listen(c).await.unwrap();
+        let mut stream = TcpStream::connect(s.listen_address().unwrap())
+            .await
+            .unwrap();
+
+        // close send half in client connection to stop rx handler
+        stream.shutdown().await.unwrap();
+
+        // handle client connection and make sure rx handler is stopped
+        let mut c = s.next().await.unwrap();
+        assert_eq!(c.get_message().await, None);
+    }
+}
