@@ -1,3 +1,4 @@
+mod account;
 mod daemon;
 mod message;
 mod server;

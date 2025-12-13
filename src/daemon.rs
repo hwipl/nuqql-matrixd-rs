@@ -1,3 +1,4 @@
+use crate::account::Accounts;
 use crate::message::Message;
 use crate::server::{Client, Config, Server};
 use tokio::sync::mpsc;
@@ -5,6 +6,7 @@ use tokio::sync::mpsc;
 struct Daemon {
     server: Server,
     client: Option<Client>,
+    accounts: Accounts,
     done: bool,
 }
 
@@ -13,6 +15,7 @@ impl Daemon {
         Daemon {
             server: server,
             client: None,
+            accounts: Accounts::new(),
             done: false,
         }
     }
@@ -45,6 +48,20 @@ impl Daemon {
             Message::Version => {
                 let client = self.client.as_mut().unwrap();
                 return client.send_message(Message::info_version()).await;
+            }
+            Message::AccountAdd {
+                protocol,
+                user,
+                password,
+            } => {
+                self.accounts.add(protocol, user, password);
+                Ok(())
+            }
+            Message::AccountDelete { id } => {
+                if let Ok(id) = id.parse::<u32>() {
+                    self.accounts.remove(&id);
+                }
+                Ok(())
             }
             _ => {
                 let client = self.client.as_mut().unwrap();
