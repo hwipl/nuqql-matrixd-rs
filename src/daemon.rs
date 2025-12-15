@@ -49,6 +49,24 @@ impl Daemon {
                 let client = self.client.as_mut().unwrap();
                 return client.send_message(Message::info_version()).await;
             }
+            Message::AccountList => {
+                let client = self.client.as_mut().unwrap();
+                for account in self.accounts.list() {
+                    if let Err(err) = client
+                        .send_message(Message::Account {
+                            id: account.id.to_string(),
+                            name: "NAME_TODO".into(),
+                            protocol: account.protocol,
+                            user: account.user,
+                            status: "STATUS_TODO".into(),
+                        })
+                        .await
+                    {
+                        return Err(err);
+                    }
+                }
+                Ok(())
+            }
             Message::AccountAdd {
                 protocol,
                 user,

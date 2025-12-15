@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-struct Account {
-    id: u32,
-    protocol: String,
-    user: String,
-    password: String,
+#[derive(Clone)]
+pub struct Account {
+    pub id: u32,
+    pub protocol: String,
+    pub user: String,
+    pub password: String,
 }
 
 impl Account {
@@ -46,5 +47,9 @@ impl Accounts {
 
     pub fn remove(&mut self, id: &u32) {
         self.accounts.remove(id);
+    }
+
+    pub fn list(&self) -> Vec<Account> {
+        self.accounts.values().cloned().collect()
     }
 }
