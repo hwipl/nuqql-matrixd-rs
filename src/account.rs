@@ -1,6 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tokio::fs::File;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Account {
     pub id: u32,
     pub protocol: String,
@@ -51,5 +54,24 @@ impl Accounts {
 
     pub fn list(&self) -> Vec<Account> {
         self.accounts.values().cloned().collect()
+    }
+
+    pub async fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let accounts = self.list();
+        let j = serde_json::to_vec(&accounts)?;
+        let mut file = File::create("accounts.json").await?;
+        file.write_all(&j).await?;
+        Ok(())
+    }
+
+    pub async fn load(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut file = File::open("accounts.json").await?;
+        let mut j = vec![];
+        file.read_to_end(&mut j).await?;
+        let accounts: Vec<Account> = serde_json::from_slice(&j)?;
+        for account in accounts {
+            self.accounts.insert(account.id, account);
+        }
+        Ok(())
     }
 }

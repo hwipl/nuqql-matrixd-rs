@@ -73,11 +73,13 @@ impl Daemon {
                 password,
             } => {
                 self.accounts.add(protocol, user, password);
+                self.accounts.save().await.unwrap(); // TODO: improve
                 Ok(())
             }
             Message::AccountDelete { id } => {
                 if let Ok(id) = id.parse::<u32>() {
                     self.accounts.remove(&id);
+                    self.accounts.save().await.unwrap(); // TODO: improve
                 }
                 Ok(())
             }
@@ -89,6 +91,11 @@ impl Daemon {
     }
 
     async fn run(&mut self) -> std::io::Result<()> {
+        if let Err(err) = self.accounts.load().await {
+            // TODO: improve
+            println!("could not load accounts: {err}");
+        }
+
         loop {
             if self.done {
                 println!("Stopping daemon...");
