@@ -1,4 +1,4 @@
-use crate::account::Accounts;
+use crate::account::{Accounts, ACCOUNTS_FILE};
 use crate::message::Message;
 use crate::server::{Client, Config, Server};
 use tokio::sync::mpsc;
@@ -73,13 +73,13 @@ impl Daemon {
                 password,
             } => {
                 self.accounts.add(protocol, user, password);
-                self.accounts.save().await.unwrap(); // TODO: improve
+                self.accounts.save(ACCOUNTS_FILE).await.unwrap(); // TODO: improve
                 Ok(())
             }
             Message::AccountDelete { id } => {
                 if let Ok(id) = id.parse::<u32>() {
                     self.accounts.remove(&id);
-                    self.accounts.save().await.unwrap(); // TODO: improve
+                    self.accounts.save(ACCOUNTS_FILE).await.unwrap(); // TODO: improve
                 }
                 Ok(())
             }
@@ -91,7 +91,7 @@ impl Daemon {
     }
 
     async fn run(&mut self) -> std::io::Result<()> {
-        if let Err(err) = self.accounts.load().await {
+        if let Err(err) = self.accounts.load(ACCOUNTS_FILE).await {
             // TODO: improve
             println!("could not load accounts: {err}");
         }

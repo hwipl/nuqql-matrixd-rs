@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+pub const ACCOUNTS_FILE: &str = "accounts.json";
+
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Account {
     pub id: u32,
@@ -56,16 +58,16 @@ impl Accounts {
         self.accounts.values().cloned().collect()
     }
 
-    pub async fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn save(&self, file: &str) -> Result<(), Box<dyn std::error::Error>> {
         let accounts = self.list();
         let j = serde_json::to_vec(&accounts)?;
-        let mut file = File::create("accounts.json").await?;
+        let mut file = File::create(file).await?;
         file.write_all(&j).await?;
         Ok(())
     }
 
-    pub async fn load(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut file = File::open("accounts.json").await?;
+    pub async fn load(&mut self, file: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let mut file = File::open(file).await?;
         let mut j = vec![];
         file.read_to_end(&mut j).await?;
         let accounts: Vec<Account> = serde_json::from_slice(&j)?;
