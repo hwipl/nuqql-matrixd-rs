@@ -77,3 +77,71 @@ impl Accounts {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_free_account_id() {
+        let mut accounts = Accounts::new();
+
+        // empty
+        assert_eq!(accounts.get_free_account_id(), 0);
+
+        // add accounts
+        accounts.add(
+            "matrix".into(),
+            "test-user1".into(),
+            "test-password1".into(),
+        );
+        // -> accounts: 0
+        assert_eq!(accounts.get_free_account_id(), 1);
+        accounts.add(
+            "matrix".into(),
+            "test-user2".into(),
+            "test-password2".into(),
+        );
+        // -> accounts: 0, 1
+        assert_eq!(accounts.get_free_account_id(), 2);
+        accounts.add(
+            "matrix".into(),
+            "test-user3".into(),
+            "test-password3".into(),
+        );
+        // -> accounts: 0, 1, 2
+        assert_eq!(accounts.get_free_account_id(), 3);
+
+        // remove first and middle account
+        accounts.remove(&0);
+        // -> accounts: 1, 2
+        assert_eq!(accounts.get_free_account_id(), 0);
+        accounts.remove(&1);
+        // -> accounts: 2
+        assert_eq!(accounts.get_free_account_id(), 0);
+
+        // add accounts again
+        accounts.add(
+            "matrix".into(),
+            "test-user1".into(),
+            "test-password1".into(),
+        );
+        // -> accounts: 0, 2
+        assert_eq!(accounts.get_free_account_id(), 1);
+        accounts.add(
+            "matrix".into(),
+            "test-user2".into(),
+            "test-password2".into(),
+        );
+        // -> accounts: 0, 1, 2
+        assert_eq!(accounts.get_free_account_id(), 3);
+
+        // remove middle and first accounts
+        accounts.remove(&1);
+        // -> accounts: 0, 2
+        assert_eq!(accounts.get_free_account_id(), 1);
+        accounts.remove(&0);
+        // -> accounts: 2
+        assert_eq!(accounts.get_free_account_id(), 0);
+    }
+}
