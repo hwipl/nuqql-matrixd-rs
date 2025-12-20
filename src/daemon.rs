@@ -55,10 +55,10 @@ impl Daemon {
                     if let Err(err) = client
                         .send_message(Message::Account {
                             id: account.id.to_string(),
-                            name: "NAME_TODO".into(),
-                            protocol: account.protocol,
-                            user: account.user,
-                            status: "STATUS_TODO".into(),
+                            name: "()".into(),
+                            protocol: account.protocol.clone(),
+                            user: account.user.clone(),
+                            status: account.get_status(),
                         })
                         .await
                     {

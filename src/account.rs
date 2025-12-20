@@ -22,6 +22,11 @@ impl Account {
             password: password,
         }
     }
+
+    pub fn get_status(&self) -> String {
+        // TODO: get real status
+        "offline".into()
+    }
 }
 
 pub struct Accounts {
