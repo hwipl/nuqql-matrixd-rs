@@ -60,7 +60,9 @@ impl Accounts {
     }
 
     pub fn list(&self) -> Vec<Account> {
-        self.accounts.values().cloned().collect()
+        let mut list: Vec<Account> = self.accounts.values().cloned().collect();
+        list.sort_by_key(|x| x.id);
+        return list;
     }
 
     pub async fn save(&self, file: &str) -> Result<(), Box<dyn std::error::Error>> {
