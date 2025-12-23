@@ -5,7 +5,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub const ACCOUNTS_FILE: &str = "accounts.json";
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Account {
     pub id: u32,
     pub protocol: String,
@@ -150,5 +150,44 @@ mod tests {
         accounts.remove(&0);
         // -> accounts: 2
         assert_eq!(accounts.get_free_account_id(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_accounts_save_load() {
+        // create temporary dir for accounts file
+        let tmp_dir = tempfile::tempdir().unwrap();
+        let file_path = tmp_dir.path().join("accounts.json");
+        let file = file_path.to_str().unwrap();
+
+        // load not existing
+        let mut accounts = Accounts::new();
+        accounts.load(file).await.unwrap_err();
+
+        // save empty accounts, reset accounts, load empty
+        let accounts = Accounts::new();
+        let list = accounts.list();
+        accounts.save(file).await.unwrap();
+
+        let mut accounts = Accounts::new();
+        accounts.load(file).await.unwrap();
+        assert_eq!(accounts.list(), list);
+
+        // add accounts, save accounts, reset accounts, load accounts
+        let mut accounts = Accounts::new();
+        accounts.add(
+            "matrix".into(),
+            "test-user1".into(),
+            "test-password1".into(),
+        );
+        accounts.add(
+            "matrix".into(),
+            "test-user2".into(),
+            "test-password2".into(),
+        );
+        let list = accounts.list();
+        accounts.save(file).await.unwrap();
+        let mut accounts = Accounts::new();
+        accounts.load(file).await.unwrap();
+        assert_eq!(accounts.list(), list);
     }
 }
