@@ -1,6 +1,7 @@
 mod account;
 mod daemon;
 mod message;
+mod queue;
 mod server;
 
 #[tokio::main]

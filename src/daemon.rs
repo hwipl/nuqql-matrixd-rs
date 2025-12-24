@@ -1,11 +1,13 @@
 use crate::account::{Accounts, ACCOUNTS_FILE};
 use crate::message::Message;
+use crate::queue::Queue;
 use crate::server::{Client, Config, Server};
 use tokio::sync::mpsc;
 
 struct Daemon {
     server: Server,
     client: Option<Client>,
+    queue: Queue,
     accounts: Accounts,
     done: bool,
 }
@@ -15,6 +17,7 @@ impl Daemon {
         Daemon {
             server: server,
             client: None,
+            queue: Queue::new(),
             accounts: Accounts::new(),
             done: false,
         }
@@ -35,7 +38,9 @@ impl Daemon {
         match msg {
             Message::Help => {
                 let client = self.client.as_mut().unwrap();
-                return client.send_message(Message::info_help()).await;
+                let msg = Message::info_help();
+                self.queue.send(msg.clone()); // TODO: improve
+                return client.send_message(msg).await;
             }
             Message::Bye => {
                 self.client = None;
@@ -47,21 +52,22 @@ impl Daemon {
             }
             Message::Version => {
                 let client = self.client.as_mut().unwrap();
-                return client.send_message(Message::info_version()).await;
+                let msg = Message::info_version();
+                self.queue.send(msg.clone()); // TODO: improve
+                return client.send_message(msg).await;
             }
             Message::AccountList => {
                 let client = self.client.as_mut().unwrap();
                 for account in self.accounts.list() {
-                    if let Err(err) = client
-                        .send_message(Message::Account {
-                            id: account.id.to_string(),
-                            name: "()".into(),
-                            protocol: account.protocol.clone(),
-                            user: account.user.clone(),
-                            status: account.get_status(),
-                        })
-                        .await
-                    {
+                    let msg = Message::Account {
+                        id: account.id.to_string(),
+                        name: "()".into(),
+                        protocol: account.protocol.clone(),
+                        user: account.user.clone(),
+                        status: account.get_status(),
+                    };
+                    self.queue.send(msg.clone()); // TODO: improve
+                    if let Err(err) = client.send_message(msg).await {
                         return Err(err);
                     }
                 }
@@ -85,6 +91,7 @@ impl Daemon {
             }
             _ => {
                 let client = self.client.as_mut().unwrap();
+                self.queue.send(msg.clone()); // TODO: improve
                 client.send_message(msg).await
             }
         }
