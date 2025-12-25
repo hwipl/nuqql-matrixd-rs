@@ -23,8 +23,10 @@ impl Queue {
         }
         while let Some(msg) = self.q.pop_front() {
             let client = self.client.as_mut().unwrap();
-            if let Err(err) = client.send_message(msg).await {
+            if let Err(err) = client.send_message(msg.clone()).await {
+                // TODO: get send error
                 println!("Error sending from queue to client, dropping client: {err}");
+                self.q.push_front(msg);
                 self.client = None;
                 return;
             }
@@ -43,8 +45,10 @@ impl Queue {
         }
         while let Some(msg) = self.q.pop_front() {
             let client = self.client.as_mut().unwrap();
-            if let Err(err) = client.send_message(msg).await {
+            if let Err(err) = client.send_message(msg.clone()).await {
+                // TODO: get send error
                 println!("Error sending from queue to client, dropping client: {err}");
+                self.q.push_front(msg);
                 self.client = None;
                 return;
             }
