@@ -1,12 +1,11 @@
 use crate::account::{Accounts, ACCOUNTS_FILE};
 use crate::message::Message;
 use crate::queue::Queue;
-use crate::server::{Client, Config, Server};
+use crate::server::{Config, Server};
 use tokio::sync::mpsc;
 
 struct Daemon {
     server: Server,
-    client: Option<Client>,
     queue: Queue,
     accounts: Accounts,
     done: bool,
@@ -16,17 +15,9 @@ impl Daemon {
     fn new(server: Server) -> Self {
         Daemon {
             server: server,
-            client: None,
             queue: Queue::new(),
             accounts: Accounts::new(),
             done: false,
-        }
-    }
-
-    async fn get_message(client: &mut Option<Client>) -> Option<Option<Message>> {
-        match client.as_mut() {
-            Some(client) => Some(client.get_message().await),
-            None => None,
         }
     }
 
@@ -37,13 +28,12 @@ impl Daemon {
         print!("{msg}");
         match msg {
             Message::Help => {
-                let client = self.client.as_mut().unwrap();
                 let msg = Message::info_help();
-                self.queue.send(msg.clone()); // TODO: improve
-                return client.send_message(msg).await;
+                self.queue.send(msg).await; // TODO: improve
+                Ok(())
             }
             Message::Bye => {
-                self.client = None;
+                self.queue.set_client(None).await;
                 Ok(())
             }
             Message::Quit => {
@@ -51,13 +41,11 @@ impl Daemon {
                 Ok(())
             }
             Message::Version => {
-                let client = self.client.as_mut().unwrap();
                 let msg = Message::info_version();
-                self.queue.send(msg.clone()); // TODO: improve
-                return client.send_message(msg).await;
+                self.queue.send(msg).await; // TODO: improve
+                Ok(())
             }
             Message::AccountList => {
-                let client = self.client.as_mut().unwrap();
                 for account in self.accounts.list() {
                     let msg = Message::Account {
                         id: account.id.to_string(),
@@ -66,10 +54,7 @@ impl Daemon {
                         user: account.user.clone(),
                         status: account.get_status(),
                     };
-                    self.queue.send(msg.clone()); // TODO: improve
-                    if let Err(err) = client.send_message(msg).await {
-                        return Err(err);
-                    }
+                    self.queue.send(msg).await; // TODO: improve
                 }
                 Ok(())
             }
@@ -90,9 +75,8 @@ impl Daemon {
                 Ok(())
             }
             _ => {
-                let client = self.client.as_mut().unwrap();
-                self.queue.send(msg.clone()); // TODO: improve
-                client.send_message(msg).await
+                self.queue.send(msg).await; // TODO: improve
+                Ok(())
             }
         }
     }
@@ -113,7 +97,7 @@ impl Daemon {
                 c = self.server.next() => match c {
                     // only one client connection is handled at the same time
                     Ok(mut c) => {
-                        if self.client.is_some() {
+                        if self.queue.has_client() {
                             // client already connected, decline connection
                             _ = c.send_message(Message::info_already_connected()).await;
                             continue;
@@ -122,7 +106,7 @@ impl Daemon {
                             println!("Error sending welcome message to client: {err}");
                             continue;
                         }
-                        self.client = Some(c);
+                        self.queue.set_client(Some(c)).await;
                     }
                     Err(err) => {
                         // server broken?
@@ -132,19 +116,19 @@ impl Daemon {
                 },
 
                 // handle message from client
-                Some(msg) = Self::get_message(&mut self.client) => match msg {
+                Some(msg) = self.queue.get_message() => match msg {
                     Some(msg) => {
                         if let Err(err) = self.handle_message(msg).await {
                             // client broken?
                             println!("Error handling message: {err}");
-                            self.client = None;
+                            self.queue.set_client(None).await;
                             continue;
                         }
                     }
                     None => {
                         // client broken?
                         println!("Error getting message from client");
-                        self.client = None;
+                        self.queue.set_client(None).await;
                     }
                 }
             }
