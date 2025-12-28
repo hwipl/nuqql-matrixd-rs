@@ -64,13 +64,17 @@ impl Daemon {
                 password,
             } => {
                 self.accounts.add(protocol, user, password);
-                self.accounts.save(ACCOUNTS_FILE).await.unwrap(); // TODO: improve
+                if let Err(err) = self.accounts.save(ACCOUNTS_FILE).await {
+                    println!("Could not save accounts to file {ACCOUNTS_FILE}: {err}");
+                }
                 Ok(())
             }
             Message::AccountDelete { id } => {
                 if let Ok(id) = id.parse::<u32>() {
                     self.accounts.remove(&id);
-                    self.accounts.save(ACCOUNTS_FILE).await.unwrap(); // TODO: improve
+                    if let Err(err) = self.accounts.save(ACCOUNTS_FILE).await {
+                        println!("Could not save accounts to file {ACCOUNTS_FILE}: {err}");
+                    }
                 }
                 Ok(())
             }
@@ -83,8 +87,7 @@ impl Daemon {
 
     async fn run(&mut self) -> std::io::Result<()> {
         if let Err(err) = self.accounts.load(ACCOUNTS_FILE).await {
-            // TODO: improve
-            println!("could not load accounts: {err}");
+            println!("Could not load accounts from file {ACCOUNTS_FILE}: {err}");
         }
 
         loop {
