@@ -3,6 +3,7 @@ use crate::message::Message;
 use crate::queue::Queue;
 use crate::server::{Config, Server};
 use tokio::sync::mpsc;
+use tracing::{debug, error, info, warn};
 
 struct Daemon {
     server: Server,
@@ -25,7 +26,7 @@ impl Daemon {
         &mut self,
         msg: Message,
     ) -> Result<(), mpsc::error::SendError<Message>> {
-        print!("{msg}");
+        debug!(%msg, "Handling message");
         match msg {
             Message::Help => {
                 let msg = Message::info_help();
@@ -65,7 +66,7 @@ impl Daemon {
             } => {
                 self.accounts.add(protocol, user, password);
                 if let Err(err) = self.accounts.save(ACCOUNTS_FILE).await {
-                    println!("Could not save accounts to file {ACCOUNTS_FILE}: {err}");
+                    error!(file = ACCOUNTS_FILE, error = %err, "Could not save accounts to file");
                 }
                 Ok(())
             }
@@ -73,7 +74,7 @@ impl Daemon {
                 if let Ok(id) = id.parse::<u32>() {
                     self.accounts.remove(&id);
                     if let Err(err) = self.accounts.save(ACCOUNTS_FILE).await {
-                        println!("Could not save accounts to file {ACCOUNTS_FILE}: {err}");
+                        error!(file = ACCOUNTS_FILE, error = %err, "Could not save accounts to file");
                     }
                 }
                 Ok(())
@@ -87,12 +88,12 @@ impl Daemon {
 
     async fn run(&mut self) -> std::io::Result<()> {
         if let Err(err) = self.accounts.load(ACCOUNTS_FILE).await {
-            println!("Could not load accounts from file {ACCOUNTS_FILE}: {err}");
+            warn!(file = ACCOUNTS_FILE, error = %err, "Could not load accounts from file");
         }
 
         loop {
             if self.done {
-                println!("Stopping daemon...");
+                info!("Stopping daemon...");
                 return Ok(());
             }
             tokio::select! {
@@ -106,14 +107,14 @@ impl Daemon {
                             continue;
                         }
                         if let Err(err) = c.send_message(Message::info_welcome()).await {
-                            println!("Error sending welcome message to client: {err}");
+                            error!(error = %err, "Error sending welcome message to client");
                             continue;
                         }
                         self.queue.set_client(Some(c)).await;
                     }
                     Err(err) => {
                         // server broken?
-                        println!("Error getting client: {err}");
+                        error!(error = %err, "Error getting client");
                         return Err(err);
                     }
                 },
@@ -123,14 +124,14 @@ impl Daemon {
                     Some(msg) => {
                         if let Err(err) = self.handle_message(msg).await {
                             // client broken?
-                            println!("Error handling message: {err}");
+                            error!(error = %err, "Error handling message");
                             self.queue.set_client(None).await;
                             continue;
                         }
                     }
                     None => {
                         // client broken?
-                        println!("Error getting message from client");
+                        error!("Error getting message from client");
                         self.queue.set_client(None).await;
                     }
                 }
@@ -141,6 +142,6 @@ impl Daemon {
 
 pub async fn run_daemon() -> std::io::Result<()> {
     let server = Server::listen(Config::default()).await?;
-    println!("Server listening on: {}", server.listen_address()?);
+    info!(address = %server.listen_address()?, "Starting daemon...");
     Daemon::new(server).run().await
 }

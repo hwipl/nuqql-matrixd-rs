@@ -1,6 +1,7 @@
 use crate::message::Message;
 use crate::server::Client;
 use std::collections::VecDeque;
+use tracing::error;
 
 pub struct Queue {
     q: VecDeque<Message>,
@@ -23,9 +24,9 @@ impl Queue {
         }
         while let Some(msg) = self.q.pop_front() {
             let client = self.client.as_mut().unwrap();
-            if let Err(err) = client.send_message(msg.clone()).await {
+            if let Err(ref err) = client.send_message(msg.clone()).await {
                 // TODO: get send error
-                println!("Error sending from queue to client, dropping client: {err}");
+                error!(error = %err, "Error sending from queue to client, dropping client");
                 self.q.push_front(msg);
                 self.client = None;
                 return;
@@ -47,7 +48,7 @@ impl Queue {
             let client = self.client.as_mut().unwrap();
             if let Err(err) = client.send_message(msg.clone()).await {
                 // TODO: get send error
-                println!("Error sending from queue to client, dropping client: {err}");
+                error!(error = %err, "Error sending from queue to client, dropping client");
                 self.q.push_front(msg);
                 self.client = None;
                 return;

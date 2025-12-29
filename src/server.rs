@@ -3,6 +3,7 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, ReadHalf, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
+use tracing::error;
 
 pub const LISTEN_ADDRESS: &str = "127.0.0.1:32000";
 pub const MAX_MSG_LENGTH: u64 = 128 * 1024;
@@ -69,12 +70,12 @@ impl Client {
                     Ok(msg) => {
                         let Ok(msg) = msg.parse() else { continue };
                         if let Err(err) = from_client.send(msg).await {
-                            println!("Error sending client message to receive channel: {err}");
+                            error!(error = %err, "Error sending client message to receive channel");
                             return;
                         }
                     }
                     Err(err) => {
-                        println!("Error receiving from client: {err}");
+                        error!(error = %err, "Error receiving from client");
                         return;
                     }
                 },
@@ -96,7 +97,7 @@ impl Client {
         while let Some(msg) = to_client.recv().await {
             let msg = msg.to_string();
             if let Err(err) = Self::send(&mut stream, send_timeout, &msg.as_bytes()).await {
-                println!("Error sending to client: {err}");
+                error!(error = %err, "Error sending to client");
                 return;
             }
         }
