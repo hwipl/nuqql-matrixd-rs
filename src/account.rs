@@ -65,7 +65,7 @@ impl Accounts {
         return list;
     }
 
-    pub async fn save(&self, file: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn save(&self, file: &str) -> anyhow::Result<()> {
         let accounts = self.list();
         let j = serde_json::to_vec(&accounts)?;
         let mut file = File::create(file).await?;
@@ -73,7 +73,7 @@ impl Accounts {
         Ok(())
     }
 
-    pub async fn load(&mut self, file: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn load(&mut self, file: &str) -> anyhow::Result<()> {
         let mut file = File::open(file).await?;
         let mut j = vec![];
         file.read_to_end(&mut j).await?;

@@ -2,7 +2,7 @@ use crate::account::{Accounts, ACCOUNTS_FILE};
 use crate::message::Message;
 use crate::queue::Queue;
 use crate::server::{Config, Server};
-use tokio::sync::mpsc;
+use anyhow::Context;
 use tracing::{debug, error, info, warn};
 
 struct Daemon {
@@ -22,10 +22,7 @@ impl Daemon {
         }
     }
 
-    async fn handle_message(
-        &mut self,
-        msg: Message,
-    ) -> Result<(), mpsc::error::SendError<Message>> {
+    async fn handle_message(&mut self, msg: Message) -> anyhow::Result<()> {
         debug!(%msg, "Handling message");
         match msg {
             Message::Help => {
@@ -86,7 +83,7 @@ impl Daemon {
         }
     }
 
-    async fn run(&mut self) -> std::io::Result<()> {
+    async fn run(&mut self) -> anyhow::Result<()> {
         if let Err(err) = self.accounts.load(ACCOUNTS_FILE).await {
             warn!(file = ACCOUNTS_FILE, error = %err, "Could not load accounts from file");
         }
@@ -98,25 +95,21 @@ impl Daemon {
             }
             tokio::select! {
                 // handle new client connection
-                c = self.server.next() => match c {
+                c = self.server.next() => {
+                    // server broken?
+                    let mut c = c.context("Could not get client from server")?;
+
                     // only one client connection is handled at the same time
-                    Ok(mut c) => {
-                        if self.queue.has_client() {
-                            // client already connected, decline connection
-                            _ = c.send_message(Message::info_already_connected()).await;
-                            continue;
-                        }
-                        if let Err(err) = c.send_message(Message::info_welcome()).await {
-                            error!(error = %err, "Error sending welcome message to client");
-                            continue;
-                        }
-                        self.queue.set_client(Some(c)).await;
+                    if self.queue.has_client() {
+                        // client already connected, decline connection
+                        _ = c.send_message(Message::info_already_connected()).await;
+                        continue;
                     }
-                    Err(err) => {
-                        // server broken?
-                        error!(error = %err, "Error getting client");
-                        return Err(err);
+                    if let Err(err) = c.send_message(Message::info_welcome()).await {
+                        error!(error = %err, "Error sending welcome message to client");
+                        continue;
                     }
+                    self.queue.set_client(Some(c)).await;
                 },
 
                 // handle message from client
@@ -140,7 +133,7 @@ impl Daemon {
     }
 }
 
-pub async fn run_daemon() -> std::io::Result<()> {
+pub async fn run_daemon() -> anyhow::Result<()> {
     let server = Server::listen(Config::default()).await?;
     info!(address = %server.listen_address()?, "Starting daemon...");
     Daemon::new(server).run().await

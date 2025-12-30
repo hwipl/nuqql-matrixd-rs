@@ -5,7 +5,7 @@ mod queue;
 mod server;
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     daemon::run_daemon().await
 }
