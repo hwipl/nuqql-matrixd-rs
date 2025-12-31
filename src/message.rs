@@ -574,8 +574,8 @@ impl std::fmt::Display for Message {
             Message::AccountAdd {
                 protocol,
                 user,
-                password,
-            } => write!(f, "account add {protocol} {user} {password}\r\n"),
+                password: _,
+            } => write!(f, "account add {protocol} {user} REDACTED\r\n"),
             Message::AccountDelete { id } => write!(f, "account {id} delete\r\n"),
             Message::Buddy {
                 account_id,
