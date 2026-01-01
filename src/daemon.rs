@@ -47,7 +47,7 @@ impl Daemon {
                 for account in self.accounts.list() {
                     let msg = Message::Account {
                         id: account.id.to_string(),
-                        name: "()".into(),
+                        name: account.get_name(),
                         protocol: account.protocol.clone(),
                         user: account.user.clone(),
                         status: account.get_status(),

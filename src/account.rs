@@ -23,6 +23,22 @@ impl Account {
         }
     }
 
+    /// Splits the user into user name and server.
+    fn split_user(&self) -> (String, String) {
+        match self.user.split_once("@") {
+            Some(("", server)) => (self.user.clone(), server.into()),
+            Some((user, "")) => (user.into(), self.user.clone()),
+            Some((user, server)) => (user.into(), server.into()),
+            None => (self.user.clone(), self.user.clone()),
+        }
+    }
+
+    /// Gets the name of the account.
+    pub fn get_name(&self) -> String {
+        let (_, server) = self.split_user();
+        format!("({server})")
+    }
+
     pub fn get_status(&self) -> String {
         // TODO: get real status
         "offline".into()
