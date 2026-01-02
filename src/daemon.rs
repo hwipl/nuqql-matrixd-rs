@@ -87,6 +87,14 @@ impl Daemon {
         if let Err(err) = self.accounts.load(ACCOUNTS_FILE).await {
             warn!(file = ACCOUNTS_FILE, error = %err, "Could not load accounts from file");
         }
+        // start accounts
+        // TODO: move/improve?
+        for account in self.accounts.list() {
+            if account.protocol != "matrix" {
+                continue;
+            }
+            account.start();
+        }
 
         loop {
             if self.done {

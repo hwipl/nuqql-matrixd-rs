@@ -1,5 +1,6 @@
 mod account;
 mod daemon;
+mod matrix;
 mod message;
 mod queue;
 mod server;

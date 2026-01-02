@@ -1,7 +1,9 @@
+use crate::matrix::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tracing::error;
 
 pub const ACCOUNTS_FILE: &str = "accounts.json";
 
@@ -42,6 +44,16 @@ impl Account {
     pub fn get_status(&self) -> String {
         // TODO: get real status
         "offline".into()
+    }
+
+    pub fn start(&self) {
+        let (user, server) = self.split_user();
+        let client = Client::new(&server, &user, &self.password);
+        tokio::spawn(async move {
+            if let Err(err) = client.start().await {
+                error!(error = %err, "Could not start matrix client")
+            }
+        });
     }
 }
 
