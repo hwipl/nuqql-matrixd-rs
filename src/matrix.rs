@@ -22,7 +22,7 @@ impl Client {
 
     pub async fn start(&self) -> anyhow::Result<()> {
         let client = matrix_sdk::Client::builder()
-            .homeserver_url(&self.server)
+            .server_name_or_homeserver_url(&self.server)
             .build()
             .await?;
         client
@@ -43,6 +43,8 @@ impl Client {
     }
 
     async fn handle_room_message(event: OriginalSyncRoomMessageEvent, room: Room) {
+        info!(room = %room.room_id(), "Handling room message");
+
         if room.state() != RoomState::Joined {
             return;
         }

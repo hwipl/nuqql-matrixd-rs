@@ -51,7 +51,7 @@ impl Account {
         let client = Client::new(&server, &user, &self.password);
         tokio::spawn(async move {
             if let Err(err) = client.start().await {
-                error!(error = %err, "Could not start matrix client")
+                error!(user, server, error = %err, "Could not start matrix client")
             }
         });
     }
