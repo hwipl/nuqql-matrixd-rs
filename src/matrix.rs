@@ -3,7 +3,7 @@ use matrix_sdk::{
     config::SyncSettings,
     ruma::api::client::filter::FilterDefinition,
     ruma::events::room::message::{MessageType, OriginalSyncRoomMessageEvent},
-    Error, LoopCtrl, Room, RoomState,
+    LoopCtrl, Room, RoomState,
 };
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
@@ -13,14 +13,6 @@ use tracing::{debug, info};
 struct FullSession {
     /// The Matrix user session.
     user_session: MatrixSession,
-
-    /// The latest sync token.
-    ///
-    /// It is only needed to persist it when using `Client::sync_once()` and we
-    /// want to make our syncs faster by not receiving all the initial sync
-    /// again.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    sync_token: Option<String>,
 }
 
 pub struct Client {
@@ -45,17 +37,17 @@ impl Client {
     }
 
     pub async fn start(&self) -> anyhow::Result<()> {
-        let (client, sync_token) = if self.session_file.exists() {
+        let client = if self.session_file.exists() {
             self.restore_session().await?
         } else {
-            (self.login().await?, None)
+            self.login().await?
         };
 
         debug!(self.server, self.user, "Matrix client logged in");
-        self.sync(client, sync_token).await
+        self.sync(client).await
     }
 
-    async fn restore_session(&self) -> anyhow::Result<(matrix_sdk::Client, Option<String>)> {
+    async fn restore_session(&self) -> anyhow::Result<matrix_sdk::Client> {
         println!(
             "Previous session found in '{}'",
             self.session_file.to_string_lossy()
@@ -63,10 +55,7 @@ impl Client {
 
         // The session was serialized as JSON in a file.
         let serialized_session = tokio::fs::read_to_string(&self.session_file).await?;
-        let FullSession {
-            user_session,
-            sync_token,
-        } = serde_json::from_str(&serialized_session)?;
+        let FullSession { user_session } = serde_json::from_str(&serialized_session)?;
 
         // Build the client with the previous settings from the session.
         let client = matrix_sdk::Client::builder()
@@ -81,7 +70,7 @@ impl Client {
         // Restore the Matrix user session.
         client.restore_session(user_session).await?;
 
-        Ok((client, sync_token))
+        Ok(client)
     }
 
     /// Login with a new device.
@@ -110,10 +99,7 @@ impl Client {
         let user_session = matrix_auth
             .session()
             .expect("A logged-in client should have a session");
-        let serialized_session = serde_json::to_string(&FullSession {
-            user_session,
-            sync_token: None,
-        })?;
+        let serialized_session = serde_json::to_string(&FullSession { user_session })?;
         tokio::fs::write(&self.session_file, serialized_session).await?;
 
         println!(
@@ -131,80 +117,20 @@ impl Client {
     }
 
     /// Setup the client to listen to new messages.
-    async fn sync(
-        &self,
-        client: matrix_sdk::Client,
-        initial_sync_token: Option<String>,
-    ) -> anyhow::Result<()> {
-        println!("Launching a first sync to ignore past messages…");
-
+    async fn sync(&self, client: matrix_sdk::Client) -> anyhow::Result<()> {
         // Enable room members lazy-loading, it will speed up the initial sync a lot
         // with accounts in lots of rooms.
         // See <https://spec.matrix.org/v1.6/client-server-api/#lazy-loading-room-members>.
         let filter = FilterDefinition::with_lazy_loading();
+        let sync_settings = SyncSettings::default().filter(filter.into());
 
-        let mut sync_settings = SyncSettings::default().filter(filter.into());
-
-        // We restore the sync where we left.
-        // This is not necessary when not using `sync_once`. The other sync methods get
-        // the sync token from the store.
-        if let Some(sync_token) = initial_sync_token {
-            sync_settings = sync_settings.token(sync_token);
-        }
-
-        // TODO: do proper syncing
-        // Let's ignore messages before the program was launched.
-        // This is a loop in case the initial sync is longer than our timeout. The
-        // server should cache the response and it will ultimately take less time to
-        // receive.
-        loop {
-            match client.sync_once(sync_settings.clone()).await {
-                Ok(response) => {
-                    // This is the last time we need to provide this token, the sync method after
-                    // will handle it on its own.
-                    sync_settings = sync_settings.token(response.next_batch.clone());
-                    self.persist_sync_token(response.next_batch).await?;
-                    break;
-                }
-                Err(error) => {
-                    println!("An error occurred during initial sync: {error}");
-                    println!("Trying again…");
-                }
-            }
-        }
-
-        println!("The client is ready! Listening to new messages…");
-
-        // Now that we've synced, let's attach a handler for incoming room messages.
         client.add_event_handler(Self::handle_room_message);
-
-        // This loops until we kill the program or an error happens.
         client
             .sync_with_result_callback(sync_settings, |sync_result| async move {
-                let response = sync_result?;
-
-                // We persist the token each time to be able to restore our session
-                self.persist_sync_token(response.next_batch)
-                    .await
-                    .map_err(|err| Error::UnknownError(err.into()))?;
-
+                sync_result?;
                 Ok(LoopCtrl::Continue)
             })
             .await?;
-
-        Ok(())
-    }
-
-    /// Persist the sync token for a future session.
-    /// Note that this is needed only when using `sync_once`. Other sync methods get
-    /// the sync token from the store.
-    async fn persist_sync_token(&self, sync_token: String) -> anyhow::Result<()> {
-        let serialized_session = tokio::fs::read_to_string(&self.session_file).await?;
-        let mut full_session: FullSession = serde_json::from_str(&serialized_session)?;
-
-        full_session.sync_token = Some(sync_token);
-        let serialized_session = serde_json::to_string(&full_session)?;
-        tokio::fs::write(&self.session_file, serialized_session).await?;
 
         Ok(())
     }
