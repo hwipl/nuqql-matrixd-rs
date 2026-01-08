@@ -5,15 +5,7 @@ use matrix_sdk::{
     ruma::events::room::message::{MessageType, OriginalSyncRoomMessageEvent},
     LoopCtrl, Room, RoomState,
 };
-use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
-
-/// The full session to persist.
-#[derive(Debug, Serialize, Deserialize)]
-struct FullSession {
-    /// The Matrix user session.
-    user_session: MatrixSession,
-}
 
 pub struct Client {
     server: String,
@@ -55,7 +47,7 @@ impl Client {
 
         // The session was serialized as JSON in a file.
         let serialized_session = tokio::fs::read_to_string(&self.session_file).await?;
-        let FullSession { user_session } = serde_json::from_str(&serialized_session)?;
+        let user_session: MatrixSession = serde_json::from_str(&serialized_session)?;
 
         // Build the client with the previous settings from the session.
         let client = matrix_sdk::Client::builder()
@@ -99,7 +91,7 @@ impl Client {
         let user_session = matrix_auth
             .session()
             .expect("A logged-in client should have a session");
-        let serialized_session = serde_json::to_string(&FullSession { user_session })?;
+        let serialized_session = serde_json::to_string(&user_session)?;
         tokio::fs::write(&self.session_file, serialized_session).await?;
 
         println!(
