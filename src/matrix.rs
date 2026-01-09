@@ -5,7 +5,7 @@ use matrix_sdk::{
     ruma::events::room::message::{MessageType, OriginalSyncRoomMessageEvent},
     LoopCtrl, Room, RoomState,
 };
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 pub struct Client {
     server: String,
@@ -40,9 +40,9 @@ impl Client {
     }
 
     async fn restore_session(&self) -> anyhow::Result<matrix_sdk::Client> {
-        println!(
-            "Previous session found in '{}'",
-            self.session_file.to_string_lossy()
+        info!(
+            session_file = %self.session_file.to_string_lossy(),
+            "Previous session found'"
         );
 
         // The session was serialized as JSON in a file.
@@ -57,7 +57,7 @@ impl Client {
             .build()
             .await?;
 
-        println!("Restoring session for {}…", user_session.meta.user_id);
+        info!(%user_session.meta.user_id, "Restoring session for user");
 
         // Restore the Matrix user session.
         client.restore_session(user_session).await?;
@@ -67,7 +67,7 @@ impl Client {
 
     /// Login with a new device.
     async fn login(&self) -> anyhow::Result<matrix_sdk::Client> {
-        println!("No previous session found, logging in…");
+        info!("No previous session found, logging in...");
 
         let client = matrix_sdk::Client::builder()
             .server_name_or_homeserver_url(&self.server)
@@ -94,9 +94,9 @@ impl Client {
         let serialized_session = serde_json::to_string(&user_session)?;
         tokio::fs::write(&self.session_file, serialized_session).await?;
 
-        println!(
-            "Session persisted in {}",
-            &self.session_file.to_string_lossy()
+        info!(
+            session_file = %self.session_file.to_string_lossy(),
+            "Session persisted",
         );
 
         // After logging in, you might want to verify this session with another one (see
@@ -143,12 +143,12 @@ impl Client {
         let room_name = match room.display_name().await {
             Ok(room_name) => room_name.to_string(),
             Err(error) => {
-                println!("Error getting room display name: {error}");
+                error!(%error, "Error getting room display name");
                 // Let's fallback to the room ID.
                 room.room_id().to_string()
             }
         };
 
-        println!("[{room_name}] {}: {}", event.sender, text_content.body)
+        info!("[{room_name}] {}: {}", event.sender, text_content.body)
     }
 }
