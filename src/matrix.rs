@@ -23,8 +23,8 @@ impl Client {
             user: user.into(),
             password: password.into(),
 
-            session_file: std::path::PathBuf::from(format!("session-{}-{}", server, user)),
-            db_path: std::path::PathBuf::from(format!("db-{}-{}", server, user)),
+            session_file: ["data", server, user, "session"].iter().collect(),
+            db_path: ["data", server, user, "db"].iter().collect(),
         }
     }
 
