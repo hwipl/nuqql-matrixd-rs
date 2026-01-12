@@ -5,6 +5,7 @@ use matrix_sdk::{
     ruma::events::room::message::{MessageType, OriginalSyncRoomMessageEvent},
     LoopCtrl, Room, RoomState,
 };
+use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info};
 
 pub struct Client {
@@ -91,8 +92,15 @@ impl Client {
         let user_session = matrix_auth
             .session()
             .expect("A logged-in client should have a session");
-        let serialized_session = serde_json::to_string(&user_session)?;
-        tokio::fs::write(&self.session_file, serialized_session).await?;
+        let serialized_session = serde_json::to_vec(&user_session)?;
+        let mut file = tokio::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&self.session_file)
+            .await?;
+        file.write_all(&serialized_session).await?;
 
         info!(
             session_file = %self.session_file.to_string_lossy(),
