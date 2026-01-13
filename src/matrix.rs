@@ -70,6 +70,13 @@ impl Client {
     async fn login(&self) -> anyhow::Result<matrix_sdk::Client> {
         info!("No previous session found, logging in...");
 
+        // create dir with permissions
+        tokio::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(&self.db_path)
+            .await?;
+
         let client = matrix_sdk::Client::builder()
             .server_name_or_homeserver_url(&self.server)
             //.sqlite_store(&db_path, Some(&passphrase))
