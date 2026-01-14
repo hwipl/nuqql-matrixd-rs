@@ -5,6 +5,7 @@ use matrix_sdk::{
     ruma::events::room::message::{MessageType, OriginalSyncRoomMessageEvent},
     LoopCtrl, Room, RoomState,
 };
+use std::os::unix::fs::PermissionsExt;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info};
 
@@ -35,6 +36,7 @@ impl Client {
         } else {
             self.login().await?
         };
+        self.set_db_permissions().await?;
 
         debug!(self.server, self.user, "Matrix client logged in");
         self.sync(client).await
@@ -121,6 +123,23 @@ impl Client {
         // `cross_signing_bootstrap` example).
 
         Ok(client)
+    }
+
+    /// Sets permissions of files in db path.
+    async fn set_db_permissions(&self) -> anyhow::Result<()> {
+        let mut dir = tokio::fs::read_dir(&self.db_path).await?;
+        while let Some(entry) = dir.next_entry().await? {
+            let path = entry.path();
+            if let Ok(metadata) = entry.metadata().await {
+                if !metadata.is_file() {
+                    continue;
+                }
+                tokio::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).await?;
+            } else {
+                error!(file = %path.to_string_lossy(), "Could not get metadata of file");
+            }
+        }
+        Ok(())
     }
 
     /// Setup the client to listen to new messages.
