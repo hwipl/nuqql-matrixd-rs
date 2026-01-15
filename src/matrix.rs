@@ -36,6 +36,7 @@ impl Client {
         } else {
             self.login().await?
         };
+        self.set_session_permissions().await?;
         self.set_db_permissions().await?;
 
         debug!(self.server, self.user, "Matrix client logged in");
@@ -123,6 +124,13 @@ impl Client {
         // `cross_signing_bootstrap` example).
 
         Ok(client)
+    }
+
+    /// Sets permissions of the session file.
+    async fn set_session_permissions(&self) -> anyhow::Result<()> {
+        tokio::fs::set_permissions(&self.session_file, std::fs::Permissions::from_mode(0o600))
+            .await?;
+        Ok(())
     }
 
     /// Sets permissions of files in db path.
