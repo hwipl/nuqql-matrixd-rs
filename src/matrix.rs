@@ -9,6 +9,10 @@ use std::os::unix::fs::PermissionsExt;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info};
 
+const SESSION_FILE_PERMISSIONS: u32 = 0o600;
+const DB_FILE_PERMISSIONS: u32 = 0o600;
+const DIR_PERMISSIONS: u32 = 0o700;
+
 pub struct Client {
     server: String,
     user: String,
@@ -76,7 +80,7 @@ impl Client {
         // create dir with permissions
         tokio::fs::DirBuilder::new()
             .recursive(true)
-            .mode(0o700)
+            .mode(DIR_PERMISSIONS)
             .create(&self.db_path)
             .await?;
 
@@ -107,7 +111,7 @@ impl Client {
             .write(true)
             .create(true)
             .truncate(true)
-            .mode(0o600)
+            .mode(SESSION_FILE_PERMISSIONS)
             .open(&self.session_file)
             .await?;
         file.write_all(&serialized_session).await?;
@@ -128,8 +132,11 @@ impl Client {
 
     /// Sets permissions of the session file.
     async fn set_session_permissions(&self) -> anyhow::Result<()> {
-        tokio::fs::set_permissions(&self.session_file, std::fs::Permissions::from_mode(0o600))
-            .await?;
+        tokio::fs::set_permissions(
+            &self.session_file,
+            std::fs::Permissions::from_mode(SESSION_FILE_PERMISSIONS),
+        )
+        .await?;
         Ok(())
     }
 
@@ -142,7 +149,11 @@ impl Client {
                 if !metadata.is_file() {
                     continue;
                 }
-                tokio::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).await?;
+                tokio::fs::set_permissions(
+                    path,
+                    std::fs::Permissions::from_mode(DB_FILE_PERMISSIONS),
+                )
+                .await?;
             } else {
                 error!(file = %path.to_string_lossy(), "Could not get metadata of file");
             }
