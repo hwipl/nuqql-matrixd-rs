@@ -96,7 +96,13 @@ impl Accounts {
     pub async fn save(&self, file: &str) -> anyhow::Result<()> {
         let accounts = self.list();
         let j = serde_json::to_vec(&accounts)?;
-        let mut file = File::create(file).await?;
+        let mut file = tokio::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(file)
+            .await?;
         file.write_all(&j).await?;
         Ok(())
     }
