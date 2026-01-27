@@ -6,6 +6,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::error;
 
 pub const ACCOUNTS_FILE: &str = "accounts.json";
+const ACCOUNTS_FILE_PERMISSIONS: u32 = 0o600;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Account {
@@ -100,7 +101,7 @@ impl Accounts {
             .write(true)
             .create(true)
             .truncate(true)
-            .mode(0o600)
+            .mode(ACCOUNTS_FILE_PERMISSIONS)
             .open(file)
             .await?;
         file.write_all(&j).await?;
