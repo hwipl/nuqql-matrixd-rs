@@ -20,10 +20,11 @@ pub struct Client {
 
     session_file: std::path::PathBuf,
     db_path: std::path::PathBuf,
+    db_passphrase: String,
 }
 
 impl Client {
-    pub fn new(server: &str, user: &str, password: &str) -> Self {
+    pub fn new(server: &str, user: &str, password: &str, db_passphrase: &str) -> Self {
         Client {
             server: server.into(),
             user: user.into(),
@@ -31,6 +32,7 @@ impl Client {
 
             session_file: ["data", server, user, "session"].iter().collect(),
             db_path: ["data", server, user, "db"].iter().collect(),
+            db_passphrase: db_passphrase.into(),
         }
     }
 
@@ -60,8 +62,7 @@ impl Client {
         // Build the client with the previous settings from the session.
         let client = matrix_sdk::Client::builder()
             .server_name_or_homeserver_url(&self.server)
-            //.sqlite_store(client_session.db_path, Some(&passphrase))
-            .sqlite_store(&self.db_path, None)
+            .sqlite_store(&self.db_path, Some(&self.db_passphrase))
             .build()
             .await?;
 
@@ -86,8 +87,7 @@ impl Client {
 
         let client = matrix_sdk::Client::builder()
             .server_name_or_homeserver_url(&self.server)
-            //.sqlite_store(&db_path, Some(&passphrase))
-            .sqlite_store(&self.db_path, None)
+            .sqlite_store(&self.db_path, Some(&self.db_passphrase))
             .build()
             .await?;
         let matrix_auth = client.matrix_auth();

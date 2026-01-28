@@ -1,4 +1,5 @@
 use crate::matrix::Client;
+use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::fs::File;
@@ -14,6 +15,7 @@ pub struct Account {
     pub protocol: String,
     pub user: String,
     pub password: String,
+    pub db_passphrase: String,
 }
 
 impl Account {
@@ -23,6 +25,7 @@ impl Account {
             protocol: protocol,
             user: user,
             password: password,
+            db_passphrase: Alphanumeric.sample_string(&mut rand::rng(), 16),
         }
     }
 
@@ -49,7 +52,7 @@ impl Account {
 
     pub fn start(&self) {
         let (user, server) = self.split_user();
-        let client = Client::new(&server, &user, &self.password);
+        let client = Client::new(&server, &user, &self.password, &self.db_passphrase);
         tokio::spawn(async move {
             if let Err(err) = client.start().await {
                 error!(user, server, error = %err, "Could not start matrix client")
