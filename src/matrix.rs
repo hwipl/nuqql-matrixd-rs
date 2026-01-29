@@ -1,17 +1,25 @@
+use crate::message::Message;
 use matrix_sdk::{
     authentication::matrix::MatrixSession,
     config::SyncSettings,
+    event_handler::Ctx,
     ruma::api::client::filter::FilterDefinition,
     ruma::events::room::message::{MessageType, OriginalSyncRoomMessageEvent},
     LoopCtrl, Room, RoomState,
 };
 use std::os::unix::fs::PermissionsExt;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
 const SESSION_FILE_PERMISSIONS: u32 = 0o600;
 const DB_FILE_PERMISSIONS: u32 = 0o600;
 const DIR_PERMISSIONS: u32 = 0o700;
+
+#[derive(Debug)]
+pub enum Event {
+    Message(Message),
+}
 
 pub struct Client {
     server: String,
@@ -36,7 +44,7 @@ impl Client {
         }
     }
 
-    pub async fn start(&self) -> anyhow::Result<()> {
+    pub async fn start(&self, from_matrix: mpsc::Sender<Event>) -> anyhow::Result<()> {
         let client = if self.session_file.exists() {
             self.restore_session().await?
         } else {
@@ -46,7 +54,7 @@ impl Client {
         self.set_db_permissions().await?;
 
         debug!(self.server, self.user, "Matrix client logged in");
-        self.sync(client).await
+        self.sync(client, from_matrix).await
     }
 
     async fn restore_session(&self) -> anyhow::Result<matrix_sdk::Client> {
@@ -162,13 +170,18 @@ impl Client {
     }
 
     /// Setup the client to listen to new messages.
-    async fn sync(&self, client: matrix_sdk::Client) -> anyhow::Result<()> {
+    async fn sync(
+        &self,
+        client: matrix_sdk::Client,
+        from_matrix: mpsc::Sender<Event>,
+    ) -> anyhow::Result<()> {
         // Enable room members lazy-loading, it will speed up the initial sync a lot
         // with accounts in lots of rooms.
         // See <https://spec.matrix.org/v1.6/client-server-api/#lazy-loading-room-members>.
         let filter = FilterDefinition::with_lazy_loading();
         let sync_settings = SyncSettings::default().filter(filter.into());
 
+        client.add_event_handler_context(from_matrix);
         client.add_event_handler(Self::handle_room_message);
         client
             .sync_with_result_callback(sync_settings, |sync_result| async move {
@@ -180,7 +193,11 @@ impl Client {
         Ok(())
     }
 
-    async fn handle_room_message(event: OriginalSyncRoomMessageEvent, room: Room) {
+    async fn handle_room_message(
+        event: OriginalSyncRoomMessageEvent,
+        room: Room,
+        from_matrix: Ctx<mpsc::Sender<Event>>,
+    ) {
         info!(room = %room.room_id(), "Handling room message");
 
         if room.state() != RoomState::Joined {
@@ -202,6 +219,18 @@ impl Client {
             }
         };
 
-        info!("[{room_name}] {}: {}", event.sender, text_content.body)
+        info!("[{room_name}] {}: {}", event.sender, text_content.body);
+        if let Err(error) = from_matrix
+            .send(Event::Message(Message::ChatMessage {
+                account_id: "FIXME".into(),
+                chat: room.room_id().to_string(),
+                timestamp: event.origin_server_ts.as_secs().to_string(),
+                sender: event.sender.to_string(),
+                message: text_content.body,
+            }))
+            .await
+        {
+            error!(%error, "Could not send message event");
+        };
     }
 }

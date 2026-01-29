@@ -1,8 +1,10 @@
 use crate::account::{Accounts, ACCOUNTS_FILE};
+use crate::matrix::Event;
 use crate::message::Message;
 use crate::queue::Queue;
 use crate::server::{Config, Server};
 use anyhow::Context;
+use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 struct Daemon {
@@ -87,13 +89,17 @@ impl Daemon {
         if let Err(err) = self.accounts.load(ACCOUNTS_FILE).await {
             warn!(file = ACCOUNTS_FILE, error = %err, "Could not load accounts from file");
         }
+
+        // create channel for matrix events
+        let (from_matrix_tx, mut from_matrix_rx) = mpsc::channel(1);
+
         // start accounts
         // TODO: move/improve?
         for account in self.accounts.list() {
             if account.protocol != "matrix" {
                 continue;
             }
-            account.start();
+            account.start(from_matrix_tx.clone());
         }
 
         loop {
@@ -134,6 +140,14 @@ impl Daemon {
                         // client broken?
                         error!("Error getting message from client");
                         self.queue.set_client(None).await;
+                    }
+                },
+
+                // handle matrix event
+                Some(event) = from_matrix_rx.recv() => {
+                    info!(?event, "Received matrix event");
+                    match event {
+                        Event::Message(msg) => self.queue.send(msg).await,
                     }
                 }
             }

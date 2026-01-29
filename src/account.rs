@@ -1,9 +1,10 @@
-use crate::matrix::Client;
+use crate::matrix::{Client, Event};
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::mpsc;
 use tracing::error;
 
 pub const ACCOUNTS_FILE: &str = "accounts.json";
@@ -50,11 +51,11 @@ impl Account {
         "offline".into()
     }
 
-    pub fn start(&self) {
+    pub fn start(&self, from_matrix: mpsc::Sender<Event>) {
         let (user, server) = self.split_user();
         let client = Client::new(&server, &user, &self.password, &self.db_passphrase);
         tokio::spawn(async move {
-            if let Err(err) = client.start().await {
+            if let Err(err) = client.start(from_matrix).await {
                 error!(user, server, error = %err, "Could not start matrix client")
             }
         });
