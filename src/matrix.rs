@@ -44,7 +44,11 @@ impl Client {
         }
     }
 
-    pub async fn start(&self, from_matrix: mpsc::Sender<Event>) -> anyhow::Result<()> {
+    pub async fn start(
+        &self,
+        account_id: u32,
+        from_matrix: mpsc::Sender<Event>,
+    ) -> anyhow::Result<()> {
         let client = if self.session_file.exists() {
             self.restore_session().await?
         } else {
@@ -54,7 +58,7 @@ impl Client {
         self.set_db_permissions().await?;
 
         debug!(self.server, self.user, "Matrix client logged in");
-        self.sync(client, from_matrix).await
+        self.sync(client, account_id, from_matrix).await
     }
 
     async fn restore_session(&self) -> anyhow::Result<matrix_sdk::Client> {
@@ -173,6 +177,7 @@ impl Client {
     async fn sync(
         &self,
         client: matrix_sdk::Client,
+        account_id: u32,
         from_matrix: mpsc::Sender<Event>,
     ) -> anyhow::Result<()> {
         // Enable room members lazy-loading, it will speed up the initial sync a lot
@@ -181,6 +186,7 @@ impl Client {
         let filter = FilterDefinition::with_lazy_loading();
         let sync_settings = SyncSettings::default().filter(filter.into());
 
+        client.add_event_handler_context(account_id);
         client.add_event_handler_context(from_matrix);
         client.add_event_handler(Self::handle_room_message);
         client
@@ -196,6 +202,7 @@ impl Client {
     async fn handle_room_message(
         event: OriginalSyncRoomMessageEvent,
         room: Room,
+        account_id: Ctx<u32>,
         from_matrix: Ctx<mpsc::Sender<Event>>,
     ) {
         info!(room = %room.room_id(), "Handling room message");
@@ -222,7 +229,7 @@ impl Client {
         info!("[{room_name}] {}: {}", event.sender, text_content.body);
         if let Err(error) = from_matrix
             .send(Event::Message(Message::ChatMessage {
-                account_id: "FIXME".into(),
+                account_id: account_id.to_string(),
                 chat: room.room_id().to_string(),
                 timestamp: event.origin_server_ts.as_secs().to_string(),
                 sender: event.sender.to_string(),

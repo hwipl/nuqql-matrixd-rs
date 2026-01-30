@@ -54,8 +54,9 @@ impl Account {
     pub fn start(&self, from_matrix: mpsc::Sender<Event>) {
         let (user, server) = self.split_user();
         let client = Client::new(&server, &user, &self.password, &self.db_passphrase);
+        let account_id = self.id;
         tokio::spawn(async move {
-            if let Err(err) = client.start(from_matrix).await {
+            if let Err(err) = client.start(account_id, from_matrix).await {
                 error!(user, server, error = %err, "Could not start matrix client")
             }
         });
