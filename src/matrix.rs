@@ -4,7 +4,10 @@ use matrix_sdk::{
     config::SyncSettings,
     event_handler::Ctx,
     ruma::api::client::filter::FilterDefinition,
-    ruma::events::room::message::{MessageType, OriginalSyncRoomMessageEvent},
+    ruma::events::room::message::{
+        MessageType, OriginalSyncRoomMessageEvent, RoomMessageEventContent,
+    },
+    ruma::RoomId,
     LoopCtrl, Room, RoomState,
 };
 use std::os::unix::fs::PermissionsExt;
@@ -48,6 +51,7 @@ impl Client {
         &self,
         account_id: u32,
         from_matrix: mpsc::Sender<Event>,
+        mut to_matrix: mpsc::Receiver<Event>,
     ) -> anyhow::Result<()> {
         let client = if self.session_file.exists() {
             self.restore_session().await?
@@ -58,7 +62,29 @@ impl Client {
         self.set_db_permissions().await?;
 
         debug!(self.server, self.user, "Matrix client logged in");
-        self.sync(client, account_id, from_matrix).await
+        let c = client.clone();
+        tokio::spawn(async move { Self::sync(c, account_id, from_matrix).await });
+
+        while let Some(msg) = to_matrix.recv().await {
+            info!("Received event message to be handled by matrix");
+            match msg {
+                Event::Message(Message::ChatMessageSend { chat, message, .. }) => {
+                    info!("Received chat message send message to be sent");
+                    let Ok(room_id) = RoomId::parse(chat) else {
+                        continue;
+                    };
+                    let Some(room) = client.get_room(&room_id) else {
+                        continue;
+                    };
+                    let content = RoomMessageEventContent::text_plain(message);
+                    if let Err(error) = room.send(content).await {
+                        error!(%error, "Could not send message to room");
+                    };
+                }
+                _ => (),
+            };
+        }
+        Ok(())
     }
 
     async fn restore_session(&self) -> anyhow::Result<matrix_sdk::Client> {
@@ -175,7 +201,6 @@ impl Client {
 
     /// Setup the client to listen to new messages.
     async fn sync(
-        &self,
         client: matrix_sdk::Client,
         account_id: u32,
         from_matrix: mpsc::Sender<Event>,
