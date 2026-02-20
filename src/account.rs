@@ -17,6 +17,7 @@ pub struct Account {
     pub user: String,
     pub password: String,
     pub db_passphrase: String,
+    pub secret_store_key: String,
 }
 
 impl Account {
@@ -27,6 +28,7 @@ impl Account {
             user: user,
             password: password,
             db_passphrase: Alphanumeric.sample_string(&mut rand::rng(), 16),
+            secret_store_key: String::new(),
         }
     }
 
@@ -54,7 +56,13 @@ impl Account {
     // TODO: send channel back in event?
     pub fn start(&self, from_matrix: mpsc::Sender<Event>) -> mpsc::Sender<Event> {
         let (user, server) = self.split_user();
-        let client = Client::new(&server, &user, &self.password, &self.db_passphrase);
+        let client = Client::new(
+            &server,
+            &user,
+            &self.password,
+            &self.db_passphrase,
+            &self.secret_store_key,
+        );
         let account_id = self.id;
         let (to_matrix_tx, to_matrix_rx) = mpsc::channel(1);
         tokio::spawn(async move {

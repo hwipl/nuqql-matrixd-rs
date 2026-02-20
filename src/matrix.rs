@@ -32,10 +32,17 @@ pub struct Client {
     session_file: std::path::PathBuf,
     db_path: std::path::PathBuf,
     db_passphrase: String,
+    secret_store_key: String,
 }
 
 impl Client {
-    pub fn new(server: &str, user: &str, password: &str, db_passphrase: &str) -> Self {
+    pub fn new(
+        server: &str,
+        user: &str,
+        password: &str,
+        db_passphrase: &str,
+        secret_store_key: &str,
+    ) -> Self {
         Client {
             server: server.into(),
             user: user.into(),
@@ -44,6 +51,7 @@ impl Client {
             session_file: ["data", server, user, "session"].iter().collect(),
             db_path: ["data", server, user, "db"].iter().collect(),
             db_passphrase: db_passphrase.into(),
+            secret_store_key: secret_store_key.into(),
         }
     }
 
@@ -53,6 +61,7 @@ impl Client {
         from_matrix: mpsc::Sender<Event>,
         mut to_matrix: mpsc::Receiver<Event>,
     ) -> anyhow::Result<()> {
+        // client
         let client = if self.session_file.exists() {
             self.restore_session().await?
         } else {
@@ -61,10 +70,29 @@ impl Client {
         self.set_session_permissions().await?;
         self.set_db_permissions().await?;
 
+        // secret store
+        if self.secret_store_key != "" {
+            match client
+                .encryption()
+                .secret_storage()
+                .open_secret_store(&self.secret_store_key)
+                .await
+            {
+                Ok(store) => {
+                    if let Err(error) = store.import_secrets().await {
+                        error!(%error, "Could not import secrets from secret store");
+                    }
+                }
+                Err(error) => error!(%error, "Could not open secret store"),
+            }
+        }
+
+        // client sync (incoming events from matrix)
         debug!(self.server, self.user, "Matrix client logged in");
         let c = client.clone();
         tokio::spawn(async move { Self::sync(c, account_id, from_matrix).await });
 
+        // handle events (outgoing events to matrix)
         while let Some(msg) = to_matrix.recv().await {
             info!("Received event message to be handled by matrix");
             match msg {
