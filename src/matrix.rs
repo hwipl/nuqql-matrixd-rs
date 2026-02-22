@@ -104,6 +104,9 @@ impl Client {
                     let Some(room) = client.get_room(&room_id) else {
                         continue;
                     };
+                    if room.state() != RoomState::Joined {
+                        continue;
+                    }
                     let content = RoomMessageEventContent::text_plain(message);
                     if let Err(error) = room.send(content).await {
                         error!(%error, "Could not send message to room");
