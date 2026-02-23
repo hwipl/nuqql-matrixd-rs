@@ -90,12 +90,42 @@ impl Client {
         // client sync (incoming events from matrix)
         debug!(self.server, self.user, "Matrix client logged in");
         let c = client.clone();
-        tokio::spawn(async move { Self::sync(c, account_id, from_matrix).await });
+        let from = from_matrix.clone();
+        tokio::spawn(async move { Self::sync(c, account_id, from).await });
 
         // handle events (outgoing events to matrix)
         while let Some(msg) = to_matrix.recv().await {
             info!("Received event message to be handled by matrix");
             match msg {
+                Event::Message(Message::BuddyList { account_id, .. }) => {
+                    for room in client.rooms() {
+                        let state = room.state();
+                        if state != RoomState::Joined && state != RoomState::Invited {
+                            continue;
+                        }
+                        let status = if state == RoomState::Joined {
+                            "GROUP_CHAT".to_string()
+                        } else {
+                            "GROUP_CHAT_INVITE".to_string()
+                        };
+                        let name = room.room_id().to_string();
+                        let alias = if let Some(name) = room.cached_display_name() {
+                            name.to_string()
+                        } else {
+                            name.clone()
+                        };
+                        let msg = Message::Buddy {
+                            account_id: account_id.clone(),
+                            status,
+                            name,
+                            alias,
+                        };
+                        if let Err(error) = from_matrix.send(Event::Message(msg)).await {
+                            error!(%error, "Could not send message event");
+                        };
+                    }
+                }
+
                 Event::Message(Message::ChatMessageSend { chat, message, .. }) => {
                     info!("Received chat message send message to be sent");
                     let Ok(room_id) = RoomId::parse(chat) else {
