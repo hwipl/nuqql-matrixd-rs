@@ -126,6 +126,26 @@ impl Client {
                     }
                 }
 
+                Event::Message(Message::ChatList { account_id }) => {
+                    for room in client.joined_rooms() {
+                        let chat = room.room_id().to_string();
+                        let alias = if let Some(name) = room.cached_display_name() {
+                            name.to_string()
+                        } else {
+                            chat.clone()
+                        };
+                        let msg = Message::Chat {
+                            account_id: account_id.clone(),
+                            chat,
+                            alias,
+                            nick: self.user.clone(),
+                        };
+                        if let Err(error) = from_matrix.send(Event::Message(msg)).await {
+                            error!(%error, "Could not send message event");
+                        };
+                    }
+                }
+
                 Event::Message(Message::ChatMessageSend { chat, message, .. }) => {
                     info!("Received chat message send message to be sent");
                     let Ok(room_id) = RoomId::parse(chat) else {
