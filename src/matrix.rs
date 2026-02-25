@@ -14,6 +14,7 @@ use std::os::unix::fs::PermissionsExt;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
+use urlencoding::encode;
 
 const SESSION_FILE_PERMISSIONS: u32 = 0o600;
 const DB_FILE_PERMISSIONS: u32 = 0o600;
@@ -110,9 +111,9 @@ impl Client {
                         };
                         let name = room.room_id().to_string();
                         let alias = if let Some(name) = room.cached_display_name() {
-                            name.to_string()
+                            encode(&name.to_string()).into()
                         } else {
-                            name.clone()
+                            encode(&name).into()
                         };
                         let msg = Message::Buddy {
                             account_id: account_id.clone(),
@@ -130,9 +131,9 @@ impl Client {
                     for room in client.joined_rooms() {
                         let chat = room.room_id().to_string();
                         let alias = if let Some(name) = room.cached_display_name() {
-                            name.to_string()
+                            encode(&name.to_string()).into()
                         } else {
-                            chat.clone()
+                            encode(&chat).into()
                         };
                         let msg = Message::Chat {
                             account_id: account_id.clone(),
