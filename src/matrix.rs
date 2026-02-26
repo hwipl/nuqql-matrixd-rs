@@ -56,6 +56,16 @@ impl Client {
         }
     }
 
+    fn get_room_name_alias(room: &Room) -> (String, String) {
+        let name = room.room_id().to_string();
+        let alias = if let Some(name) = room.cached_display_name() {
+            encode(&name.to_string()).into()
+        } else {
+            encode(&name).into()
+        };
+        (name, alias)
+    }
+
     pub async fn start(
         &self,
         account_id: u32,
@@ -109,12 +119,7 @@ impl Client {
                         } else {
                             "GROUP_CHAT_INVITE".to_string()
                         };
-                        let name = room.room_id().to_string();
-                        let alias = if let Some(name) = room.cached_display_name() {
-                            encode(&name.to_string()).into()
-                        } else {
-                            encode(&name).into()
-                        };
+                        let (name, alias) = Self::get_room_name_alias(&room);
                         let msg = Message::Buddy {
                             account_id: account_id.clone(),
                             status,
@@ -129,12 +134,7 @@ impl Client {
 
                 Event::Message(Message::ChatList { account_id }) => {
                     for room in client.joined_rooms() {
-                        let chat = room.room_id().to_string();
-                        let alias = if let Some(name) = room.cached_display_name() {
-                            encode(&name.to_string()).into()
-                        } else {
-                            encode(&chat).into()
-                        };
+                        let (chat, alias) = Self::get_room_name_alias(&room);
                         let msg = Message::Chat {
                             account_id: account_id.clone(),
                             chat,
