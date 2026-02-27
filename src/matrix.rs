@@ -66,6 +66,22 @@ impl Client {
         (name, alias)
     }
 
+    async fn send_message(client: &matrix_sdk::Client, chat: String, message: String) {
+        let Ok(room_id) = RoomId::parse(chat) else {
+            return;
+        };
+        let Some(room) = client.get_room(&room_id) else {
+            return;
+        };
+        if room.state() != RoomState::Joined {
+            return;
+        }
+        let content = RoomMessageEventContent::text_plain(message);
+        if let Err(error) = room.send(content).await {
+            error!(%error, "Could not send message to room");
+        };
+    }
+
     pub async fn start(
         &self,
         account_id: u32,
@@ -132,6 +148,14 @@ impl Client {
                     }
                 }
 
+                Event::Message(Message::MessageSend {
+                    destination,
+                    message,
+                    ..
+                }) => {
+                    Self::send_message(&client, destination, message).await;
+                }
+
                 Event::Message(Message::ChatList { account_id }) => {
                     for room in client.joined_rooms() {
                         let (chat, alias) = Self::get_room_name_alias(&room);
@@ -148,21 +172,9 @@ impl Client {
                 }
 
                 Event::Message(Message::ChatMessageSend { chat, message, .. }) => {
-                    info!("Received chat message send message to be sent");
-                    let Ok(room_id) = RoomId::parse(chat) else {
-                        continue;
-                    };
-                    let Some(room) = client.get_room(&room_id) else {
-                        continue;
-                    };
-                    if room.state() != RoomState::Joined {
-                        continue;
-                    }
-                    let content = RoomMessageEventContent::text_plain(message);
-                    if let Err(error) = room.send(content).await {
-                        error!(%error, "Could not send message to room");
-                    };
+                    Self::send_message(&client, chat, message).await;
                 }
+
                 _ => (),
             };
         }
