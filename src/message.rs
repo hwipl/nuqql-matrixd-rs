@@ -5,6 +5,11 @@ pub enum Message {
     Info {
         message: String,
     },
+    // error
+    // error: <msg>
+    Error {
+        message: String,
+    },
     // account
     // account: <id> <name> <protocol> <user> <status>
     Account {
@@ -169,10 +174,6 @@ impl Message {
         Self::info("Welcome to nuqql-matrixd-rs!")
     }
 
-    pub fn info_already_connected() -> Self {
-        Self::info("client already connected")
-    }
-
     pub fn info_help() -> Self {
         let help = r#"List of commands and their description:
 account list
@@ -225,6 +226,16 @@ help
         // TODO: improve
         Self::info("nuqql-matrixd-rs v0.0.0-devel")
     }
+
+    pub fn error(message: &str) -> Self {
+        Message::Error {
+            message: message.into(),
+        }
+    }
+
+    pub fn error_already_connected() -> Self {
+        Self::error("client already connected")
+    }
 }
 
 impl std::str::FromStr for Message {
@@ -244,9 +255,10 @@ fn parse(s: &str) -> Option<Message> {
         return None;
     }
     match s[0] {
-        // TODO: error?
         // info: <msg>
         "info:" => parse_info(s),
+        // error: <msg>
+        "error:" => parse_error(s),
         // account: <id> <name> <protocol> <user> <status>
         "account:" => parse_account(s),
         // account list
@@ -559,10 +571,21 @@ fn parse_info(s: Vec<&str>) -> Option<Message> {
     })
 }
 
+fn parse_error(s: Vec<&str>) -> Option<Message> {
+    // error: <msg>
+    if s.len() < 2 {
+        return None;
+    }
+    Some(Message::Error {
+        message: s[1..].join(" "),
+    })
+}
+
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Message::Info { message } => write!(f, "info: {message}\r\n"),
+            Message::Error { message } => write!(f, "error: {message}\r\n"),
             Message::Account {
                 id,
                 name,

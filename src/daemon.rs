@@ -194,7 +194,7 @@ impl Daemon {
                     // only one client connection is handled at the same time
                     if self.queue.has_client() {
                         // client already connected, decline connection
-                        _ = c.send_message(Message::info_already_connected()).await;
+                        _ = c.send_message(Message::error_already_connected()).await;
                         continue;
                     }
                     if let Err(err) = c.send_message(Message::info_welcome()).await {
