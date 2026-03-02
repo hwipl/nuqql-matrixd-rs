@@ -701,6 +701,9 @@ mod tests {
             Message::Info {
                 message: "hello".into(),
             },
+            Message::Error {
+                message: "some error!".into(),
+            },
             Message::Account {
                 id: "1".into(),
                 name: "matrix".into(),
@@ -712,7 +715,7 @@ mod tests {
             Message::AccountAdd {
                 protocol: "matrix".into(),
                 user: "user".into(),
-                password: "password".into(),
+                password: "REDACTED".into(), // password is always "REDACTED" after to_string()
             },
             Message::AccountDelete { id: "1".into() },
             Message::Buddy {
