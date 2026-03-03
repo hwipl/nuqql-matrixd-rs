@@ -132,6 +132,22 @@ impl Daemon {
                 Ok(())
             }
 
+            Message::ChatJoin { account_id, chat } => {
+                info!("Received chat join message");
+                if let Ok(id) = account_id.parse::<u32>() {
+                    if let Some(client) = self.matrix_clients.get(&id) {
+                        if let Err(error) = client
+                            .send(Event::Message(Message::ChatJoin { account_id, chat }))
+                            .await
+                        {
+                            error!(%error, "Could not send chat join message");
+                        }
+                        info!("Forwarded chat join message to be sent");
+                    };
+                };
+                Ok(())
+            }
+
             Message::ChatMessageSend {
                 account_id,
                 chat,
