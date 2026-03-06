@@ -148,6 +148,22 @@ impl Daemon {
                 Ok(())
             }
 
+            Message::ChatLeave { account_id, chat } => {
+                info!("Received chat leave message");
+                if let Ok(id) = account_id.parse::<u32>() {
+                    if let Some(client) = self.matrix_clients.get(&id) {
+                        if let Err(error) = client
+                            .send(Event::Message(Message::ChatLeave { account_id, chat }))
+                            .await
+                        {
+                            error!(%error, "Could not send chat leave message");
+                        }
+                        info!("Forwarded chat leave message to be sent");
+                    };
+                };
+                Ok(())
+            }
+
             Message::ChatMessageSend {
                 account_id,
                 chat,

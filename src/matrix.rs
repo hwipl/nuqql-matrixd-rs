@@ -188,6 +188,22 @@ impl Client {
                     }
                 }
 
+                Event::Message(Message::ChatLeave { chat, .. }) => {
+                    // TODO: send error messages?
+                    let Ok(room_id) = RoomId::parse(&chat) else {
+                        continue;
+                    };
+                    let Some(room) = client.get_room(&room_id) else {
+                        continue;
+                    };
+                    if room.state() != RoomState::Joined || room.state() != RoomState::Invited {
+                        continue;
+                    }
+                    if let Err(error) = room.join().await {
+                        error!(%error, room=chat, "Could not join room");
+                    }
+                }
+
                 Event::Message(Message::ChatMessageSend { chat, message, .. }) => {
                     Self::send_message(&client, chat, message).await;
                 }
