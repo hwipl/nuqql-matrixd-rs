@@ -187,6 +187,22 @@ impl Daemon {
                 };
                 Ok(())
             }
+
+            Message::ChatUserList { account_id, chat } => {
+                info!("Received chat user list message");
+                if let Ok(id) = account_id.parse::<u32>() {
+                    if let Some(client) = self.matrix_clients.get(&id) {
+                        if let Err(error) = client
+                            .send(Event::Message(Message::ChatUserList { account_id, chat }))
+                            .await
+                        {
+                            error!(%error, "Could not send chat user list message");
+                        }
+                    };
+                };
+                Ok(())
+            }
+
             _ => {
                 self.queue.send(msg).await; // TODO: improve
                 Ok(())

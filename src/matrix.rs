@@ -8,7 +8,7 @@ use matrix_sdk::{
         MessageType, OriginalSyncRoomMessageEvent, RoomMessageEventContent,
     },
     ruma::RoomId,
-    LoopCtrl, Room, RoomState,
+    LoopCtrl, Room, RoomMemberships, RoomState,
 };
 use std::os::unix::fs::PermissionsExt;
 use tokio::io::AsyncWriteExt;
@@ -206,6 +206,38 @@ impl Client {
 
                 Event::Message(Message::ChatMessageSend { chat, message, .. }) => {
                     Self::send_message(&client, chat, message).await;
+                }
+
+                Event::Message(Message::ChatUserList { account_id, chat }) => {
+                    // TODO: send error messages?
+                    let Ok(room_id) = RoomId::parse(&chat) else {
+                        continue;
+                    };
+                    let Some(room) = client.get_room(&room_id) else {
+                        continue;
+                    };
+                    if room.state() != RoomState::Joined {
+                        continue;
+                    }
+                    let members = match room.members(RoomMemberships::JOIN).await {
+                        Err(error) => {
+                            error!(%error, room=chat, "Could not get room members");
+                            continue;
+                        }
+                        Ok(members) => members,
+                    };
+                    for member in members {
+                        let msg = Message::ChatUser {
+                            account_id: account_id.clone(),
+                            chat: chat.clone(),
+                            user: member.user_id().into(),
+                            alias: encode(member.display_name().unwrap_or("")).into(),
+                            status: "join".into(),
+                        };
+                        if let Err(error) = from_matrix.send(Event::Message(msg)).await {
+                            error!(%error, "Could not send message event");
+                        };
+                    }
                 }
 
                 _ => (),
