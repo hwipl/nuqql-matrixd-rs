@@ -7,7 +7,7 @@ use matrix_sdk::{
     ruma::events::room::message::{
         MessageType, OriginalSyncRoomMessageEvent, RoomMessageEventContent,
     },
-    ruma::RoomId,
+    ruma::{RoomId, UserId},
     LoopCtrl, Room, RoomMemberships, RoomState,
 };
 use std::os::unix::fs::PermissionsExt;
@@ -237,6 +237,25 @@ impl Client {
                         if let Err(error) = from_matrix.send(Event::Message(msg)).await {
                             error!(%error, "Could not send message event");
                         };
+                    }
+                }
+
+                Event::Message(Message::ChatUserInvite { chat, user, .. }) => {
+                    // TODO: send error messages?
+                    let Ok(room_id) = RoomId::parse(&chat) else {
+                        continue;
+                    };
+                    let Ok(user_id) = UserId::parse(&user) else {
+                        continue;
+                    };
+                    let Some(room) = client.get_room(&room_id) else {
+                        continue;
+                    };
+                    if room.state() != RoomState::Joined {
+                        continue;
+                    }
+                    if let Err(error) = room.invite_user_by_id(&user_id).await {
+                        error!(%error, room=chat, user=user, "Could not invite user to room");
                     }
                 }
 

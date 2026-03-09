@@ -203,6 +203,29 @@ impl Daemon {
                 Ok(())
             }
 
+            Message::ChatUserInvite {
+                account_id,
+                chat,
+                user,
+            } => {
+                info!("Received chat user invite message");
+                if let Ok(id) = account_id.parse::<u32>() {
+                    if let Some(client) = self.matrix_clients.get(&id) {
+                        if let Err(error) = client
+                            .send(Event::Message(Message::ChatUserInvite {
+                                account_id,
+                                chat,
+                                user,
+                            }))
+                            .await
+                        {
+                            error!(%error, "Could not send chat user invite message");
+                        }
+                    };
+                };
+                Ok(())
+            }
+
             _ => {
                 self.queue.send(msg).await; // TODO: improve
                 Ok(())
