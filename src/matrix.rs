@@ -219,7 +219,7 @@ impl Client {
                     if room.state() != RoomState::Joined {
                         continue;
                     }
-                    let members = match room.members(RoomMemberships::JOIN).await {
+                    let members = match room.members(RoomMemberships::ACTIVE).await {
                         Err(error) => {
                             error!(%error, room=chat, "Could not get room members");
                             continue;
@@ -232,7 +232,7 @@ impl Client {
                             chat: chat.clone(),
                             user: member.user_id().into(),
                             alias: encode(member.display_name().unwrap_or("")).into(),
-                            status: "join".into(),
+                            status: member.membership().as_str().into(),
                         };
                         if let Err(error) = from_matrix.send(Event::Message(msg)).await {
                             error!(%error, "Could not send message event");
