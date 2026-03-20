@@ -231,7 +231,10 @@ impl Client {
                             account_id: account_id.clone(),
                             chat: chat.clone(),
                             user: member.user_id().into(),
-                            alias: encode(member.display_name().unwrap_or("")).into(),
+                            alias: match member.display_name() {
+                                Some(name) => encode(name).into(),
+                                None => member.user_id().into(),
+                            },
                             status: member.membership().as_str().into(),
                         };
                         if let Err(error) = from_matrix.send(Event::Message(msg)).await {
