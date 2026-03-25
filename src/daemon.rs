@@ -118,6 +118,20 @@ impl Daemon {
                 Ok(())
             }
 
+            Message::StatusGet { account_id } => {
+                if let Ok(id) = account_id.parse::<u32>() {
+                    if let Some(client) = self.matrix_clients.get(&id) {
+                        if let Err(error) = client
+                            .send(Event::Message(Message::StatusGet { account_id }))
+                            .await
+                        {
+                            error!(%error, "Could not send status get message");
+                        }
+                    };
+                };
+                Ok(())
+            }
+
             Message::ChatList { account_id } => {
                 if let Ok(id) = account_id.parse::<u32>() {
                     if let Some(client) = self.matrix_clients.get(&id) {

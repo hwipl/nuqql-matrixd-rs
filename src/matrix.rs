@@ -156,6 +156,20 @@ impl Client {
                     Self::send_message(&client, destination, message).await;
                 }
 
+                Event::Message(Message::StatusGet { account_id }) => {
+                    let msg = Message::Status {
+                        account_id: account_id.clone(),
+                        status: if client.is_active() {
+                            "online".into()
+                        } else {
+                            "offline".into()
+                        },
+                    };
+                    if let Err(error) = from_matrix.send(Event::Message(msg)).await {
+                        error!(%error, "Could not send message event");
+                    };
+                }
+
                 Event::Message(Message::ChatList { account_id }) => {
                     for room in client.joined_rooms() {
                         let (chat, alias) = Self::get_room_name_alias(&room);
