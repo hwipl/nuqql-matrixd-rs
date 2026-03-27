@@ -82,6 +82,14 @@ impl Daemon {
                 Ok(())
             }
 
+            Message::MessageCollect { account_id } => {
+                if account_id.parse::<u32>().is_ok() {
+                    let msg = Message::error("history is not supported");
+                    self.queue.send(msg).await; // TODO: improve
+                };
+                Ok(())
+            }
+
             Message::BuddyList { account_id, status } => {
                 if let Ok(id) = account_id.parse::<u32>() {
                     if let Some(client) = self.matrix_clients.get(&id) {
