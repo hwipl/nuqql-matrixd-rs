@@ -251,7 +251,7 @@ fn parse(s: &str) -> Option<Message> {
     //
     let s = &s[..s.len() - 2];
     let s: Vec<&str> = s.split(' ').collect();
-    if s.len() == 0 {
+    if s.is_empty() {
         return None;
     }
     match s[0] {
@@ -386,14 +386,14 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
             return Some(Message::BuddyList {
                 account_id: s[1].into(),
                 status: (*s.get(3).unwrap_or(&"")).into(),
-            })
+            });
         }
 
         // account <id> collect
         "collect" => {
             return Some(Message::MessageCollect {
                 account_id: s[1].into(),
-            })
+            });
         }
 
         // account <id> send <user> <msg>
@@ -418,7 +418,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
                 "get" => {
                     return Some(Message::StatusGet {
                         account_id: s[1].into(),
-                    })
+                    });
                 }
                 "set" => {
                     if s.len() < 5 {
@@ -447,7 +447,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
                 "list" => {
                     return Some(Message::ChatList {
                         account_id: s[1].into(),
-                    })
+                    });
                 }
                 "join" => {
                     if s.len() < 5 {

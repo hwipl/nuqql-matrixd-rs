@@ -96,7 +96,7 @@ impl Client {
     ) {
         while let Some(msg) = to_client.recv().await {
             let msg = msg.to_string();
-            if let Err(err) = Self::send(&mut stream, send_timeout, &msg.as_bytes()).await {
+            if let Err(err) = Self::send(&mut stream, send_timeout, msg.as_bytes()).await {
                 error!(error = %err, "Error sending to client");
                 return;
             }

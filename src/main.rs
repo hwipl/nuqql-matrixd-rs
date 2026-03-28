@@ -7,7 +7,7 @@ mod server;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let filter = if let Ok(_) = std::env::var("RUST_LOG") {
+    let filter = if std::env::var("RUST_LOG").is_ok() {
         tracing_subscriber::EnvFilter::from_default_env()
     } else {
         tracing_subscriber::EnvFilter::new("warn,nuqql_matrixd_rs=info")

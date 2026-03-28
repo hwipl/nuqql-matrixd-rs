@@ -23,10 +23,10 @@ pub struct Account {
 impl Account {
     fn new(id: u32, protocol: String, user: String, password: String) -> Self {
         Account {
-            id: id,
-            protocol: protocol,
-            user: user,
-            password: password,
+            id,
+            protocol,
+            user,
+            password,
             db_passphrase: Alphanumeric.sample_string(&mut rand::rng(), 16),
             secret_store_key: String::new(),
         }
@@ -107,7 +107,7 @@ impl Accounts {
     pub fn list(&self) -> Vec<Account> {
         let mut list: Vec<Account> = self.accounts.values().cloned().collect();
         list.sort_by_key(|x| x.id);
-        return list;
+        list
     }
 
     pub async fn save(&self, file: &str) -> anyhow::Result<()> {

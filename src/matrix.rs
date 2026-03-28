@@ -1,5 +1,6 @@
 use crate::message::Message;
 use matrix_sdk::{
+    LoopCtrl, Room, RoomMemberships, RoomState,
     authentication::matrix::MatrixSession,
     config::SyncSettings,
     event_handler::Ctx,
@@ -8,7 +9,6 @@ use matrix_sdk::{
         MessageType, OriginalSyncRoomMessageEvent, RoomMessageEventContent,
     },
     ruma::{RoomId, UserId},
-    LoopCtrl, Room, RoomMemberships, RoomState,
 };
 use std::os::unix::fs::PermissionsExt;
 use tokio::io::AsyncWriteExt;
@@ -98,7 +98,7 @@ impl Client {
         self.set_db_permissions().await?;
 
         // secret store
-        if self.secret_store_key != "" {
+        if !self.secret_store_key.is_empty() {
             match client
                 .encryption()
                 .secret_storage()
