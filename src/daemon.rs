@@ -59,6 +59,7 @@ impl Daemon {
                     };
                     self.queue.send(msg).await; // TODO: improve
                 }
+                self.queue.send(Message::info("listed accounts.")).await; // TODO: improve
                 Ok(())
             }
             Message::AccountAdd {
