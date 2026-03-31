@@ -49,7 +49,8 @@ impl Daemon {
                 Ok(())
             }
             Message::AccountList => {
-                for account in self.accounts.list() {
+                let accounts = self.accounts.list();
+                for account in &accounts {
                     let msg = Message::Account {
                         id: account.id.to_string(),
                         name: account.get_name(),
@@ -60,6 +61,16 @@ impl Daemon {
                     self.queue.send(msg).await; // TODO: improve
                 }
                 self.queue.send(Message::info("listed accounts.")).await; // TODO: improve
+                if accounts.is_empty() {
+                    for txt in [
+                        "You do not have any accounts configured.",
+                        "You can add a new matrix account with the following command: \
+                            account add matrix <username>@<server> <password>",
+                        "Example: account add matrix dummy@yourserver.org YourPassword",
+                    ] {
+                        self.queue.send(Message::info(txt)).await; // TODO: improve
+                    }
+                }
                 Ok(())
             }
             Message::AccountAdd {
