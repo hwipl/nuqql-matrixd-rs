@@ -33,7 +33,7 @@ struct Args {
     filter_own: bool,
 
     /// set logging level
-    #[clap(long, default_value = "warn")]
+    #[clap(long, env = "RUST_LOG", default_value = "warn,nuqql_matrixd_rs=info")]
     loglevel: String,
 
     /// set AF_INET listen port
@@ -53,11 +53,7 @@ struct Args {
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     println!("{args:#?}");
-    let filter = if std::env::var("RUST_LOG").is_ok() {
-        tracing_subscriber::EnvFilter::from_default_env()
-    } else {
-        tracing_subscriber::EnvFilter::new("warn,nuqql_matrixd_rs=info")
-    };
+    let filter = tracing_subscriber::EnvFilter::new(args.loglevel);
     tracing_subscriber::fmt::fmt()
         .with_env_filter(filter)
         .init();
