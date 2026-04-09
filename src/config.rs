@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::path::PathBuf;
 
 const VERSION: &str = "0.1.0";
 
@@ -43,6 +44,7 @@ struct Args {
 }
 
 pub struct Config {
+    pub dir: PathBuf,
     pub loglevel: String,
 }
 
@@ -51,8 +53,21 @@ impl Config {
         // parse command line arguments
         let args = Args::parse();
 
+        // get directory
+        let dir = if args.dir.is_empty() {
+            if let Some(mut dir) = dirs::config_dir() {
+                dir.push("nuqql-matrixd-rs");
+                dir
+            } else {
+                PathBuf::new()
+            }
+        } else {
+            PathBuf::from(args.dir)
+        };
+
         // create config
         Self {
+            dir: dir,
             loglevel: args.loglevel,
         }
     }
