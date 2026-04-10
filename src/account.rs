@@ -2,12 +2,12 @@ use crate::matrix::{Client, Event};
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc;
 use tracing::error;
 
-pub const ACCOUNTS_FILE: &str = "accounts.json";
 const ACCOUNTS_FILE_PERMISSIONS: u32 = 0o600;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -110,7 +110,7 @@ impl Accounts {
         list
     }
 
-    pub async fn save(&self, file: &str) -> anyhow::Result<()> {
+    pub async fn save(&self, file: &Path) -> anyhow::Result<()> {
         let accounts = self.list();
         let j = serde_json::to_vec(&accounts)?;
         let mut file = tokio::fs::OpenOptions::new()
@@ -124,7 +124,7 @@ impl Accounts {
         Ok(())
     }
 
-    pub async fn load(&mut self, file: &str) -> anyhow::Result<()> {
+    pub async fn load(&mut self, file: &Path) -> anyhow::Result<()> {
         let mut file = File::open(file).await?;
         let mut j = vec![];
         file.read_to_end(&mut j).await?;

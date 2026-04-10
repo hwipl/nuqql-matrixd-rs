@@ -1,14 +1,16 @@
-use crate::account::{ACCOUNTS_FILE, Accounts};
+use crate::account::Accounts;
+use crate::config::Config;
 use crate::matrix::Event;
 use crate::message::Message;
 use crate::queue::Queue;
-use crate::server::{Config, Server};
+use crate::server::{self, Server};
 use anyhow::Context;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 struct Daemon {
+    config: Config,
     server: Server,
     queue: Queue,
     accounts: Accounts,
@@ -17,8 +19,9 @@ struct Daemon {
 }
 
 impl Daemon {
-    fn new(server: Server) -> Self {
+    fn new(config: Config, server: Server) -> Self {
         Daemon {
+            config,
             server,
             queue: Queue::new(),
             accounts: Accounts::new(),
@@ -79,16 +82,16 @@ impl Daemon {
                 password,
             } => {
                 self.accounts.add(protocol, user, password);
-                if let Err(err) = self.accounts.save(ACCOUNTS_FILE).await {
-                    error!(file = ACCOUNTS_FILE, error = %err, "Could not save accounts to file");
+                if let Err(err) = self.accounts.save(&self.config.accounts_file).await {
+                    error!(file = %self.config.accounts_file.to_string_lossy(), error = %err, "Could not save accounts to file");
                 }
                 Ok(())
             }
             Message::AccountDelete { id } => {
                 if let Ok(id) = id.parse::<u32>() {
                     self.accounts.remove(&id);
-                    if let Err(err) = self.accounts.save(ACCOUNTS_FILE).await {
-                        error!(file = ACCOUNTS_FILE, error = %err, "Could not save accounts to file");
+                    if let Err(err) = self.accounts.save(&self.config.accounts_file).await {
+                        error!(file = %self.config.accounts_file.to_string_lossy(), error = %err, "Could not save accounts to file");
                     }
                 }
                 Ok(())
@@ -262,8 +265,8 @@ impl Daemon {
     }
 
     async fn run(&mut self) -> anyhow::Result<()> {
-        if let Err(err) = self.accounts.load(ACCOUNTS_FILE).await {
-            warn!(file = ACCOUNTS_FILE, error = %err, "Could not load accounts from file");
+        if let Err(err) = self.accounts.load(&self.config.accounts_file).await {
+            warn!(file = %self.config.accounts_file.to_string_lossy(), error = %err, "Could not load accounts from file");
         }
 
         // create channel for matrix events
@@ -332,8 +335,16 @@ impl Daemon {
     }
 }
 
-pub async fn run_daemon() -> anyhow::Result<()> {
-    let server = Server::listen(Config::default()).await?;
+const DIR_PERMISSIONS: u32 = 0o700;
+
+pub async fn run_daemon(config: Config) -> anyhow::Result<()> {
+    // create dir with permissions
+    tokio::fs::DirBuilder::new()
+        .recursive(true)
+        .mode(DIR_PERMISSIONS)
+        .create(&config.dir)
+        .await?;
+    let server = Server::listen(server::Config::default()).await?;
     info!(address = %server.listen_address()?, "Starting daemon...");
-    Daemon::new(server).run().await
+    Daemon::new(config, server).run().await
 }

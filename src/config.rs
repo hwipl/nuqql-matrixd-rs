@@ -1,6 +1,8 @@
 use clap::Parser;
 use std::path::PathBuf;
 
+const ACCOUNTS_FILE: &str = "accounts.json";
+
 const VERSION: &str = "0.1.0";
 
 #[derive(Debug, Parser)]
@@ -45,6 +47,7 @@ struct Args {
 
 pub struct Config {
     pub dir: PathBuf,
+    pub accounts_file: PathBuf,
     pub loglevel: String,
 }
 
@@ -65,9 +68,13 @@ impl Config {
             PathBuf::from(args.dir)
         };
 
+        // get accounts file
+        let accounts_file = dir.join(ACCOUNTS_FILE);
+
         // create config
         Self {
             dir: dir,
+            accounts_file: accounts_file,
             loglevel: args.loglevel,
         }
     }
