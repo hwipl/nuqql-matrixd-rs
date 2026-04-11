@@ -335,13 +335,11 @@ impl Daemon {
     }
 }
 
-const DIR_PERMISSIONS: u32 = 0o700;
-
 pub async fn run_daemon(config: Config) -> anyhow::Result<()> {
     // create dir with permissions
     tokio::fs::DirBuilder::new()
         .recursive(true)
-        .mode(DIR_PERMISSIONS)
+        .mode(config.dir_permissions)
         .create(&config.dir)
         .await?;
     let server = Server::listen(server::Config::default()).await?;

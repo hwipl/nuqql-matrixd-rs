@@ -1,6 +1,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 
+const DIR_PERMISSIONS: u32 = 0o700;
 const ACCOUNTS_FILE: &str = "accounts.json";
 
 const VERSION: &str = "0.1.0";
@@ -47,6 +48,7 @@ struct Args {
 
 pub struct Config {
     pub dir: PathBuf,
+    pub dir_permissions: u32,
     pub accounts_file: PathBuf,
     pub loglevel: String,
 }
@@ -74,6 +76,7 @@ impl Config {
         // create config
         Self {
             dir: dir,
+            dir_permissions: DIR_PERMISSIONS,
             accounts_file: accounts_file,
             loglevel: args.loglevel,
         }
