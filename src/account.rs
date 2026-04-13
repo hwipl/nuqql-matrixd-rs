@@ -8,8 +8,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc;
 use tracing::error;
 
-const ACCOUNTS_FILE_PERMISSIONS: u32 = 0o600;
-
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Account {
     pub id: u32,
@@ -110,14 +108,14 @@ impl Accounts {
         list
     }
 
-    pub async fn save(&self, file: &Path) -> anyhow::Result<()> {
+    pub async fn save(&self, file: &Path, permissions: u32) -> anyhow::Result<()> {
         let accounts = self.list();
         let j = serde_json::to_vec(&accounts)?;
         let mut file = tokio::fs::OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .mode(ACCOUNTS_FILE_PERMISSIONS)
+            .mode(permissions)
             .open(file)
             .await?;
         file.write_all(&j).await?;
