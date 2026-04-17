@@ -205,20 +205,19 @@ mod tests {
     async fn test_accounts_save_load() {
         // create temporary dir for accounts file
         let tmp_dir = tempfile::tempdir().unwrap();
-        let file_path = tmp_dir.path().join("accounts.json");
-        let file = file_path.to_str().unwrap();
+        let file = tmp_dir.path().join("accounts.json");
 
         // load not existing
         let mut accounts = Accounts::new();
-        accounts.load(file).await.unwrap_err();
+        accounts.load(&file).await.unwrap_err();
 
         // save empty accounts, reset accounts, load empty
         let accounts = Accounts::new();
         let list = accounts.list();
-        accounts.save(file).await.unwrap();
+        accounts.save(&file, 0o600).await.unwrap();
 
         let mut accounts = Accounts::new();
-        accounts.load(file).await.unwrap();
+        accounts.load(&file).await.unwrap();
         assert_eq!(accounts.list(), list);
 
         // add accounts, save accounts, reset accounts, load accounts
@@ -234,9 +233,9 @@ mod tests {
             "test-password2".into(),
         );
         let list = accounts.list();
-        accounts.save(file).await.unwrap();
+        accounts.save(&file, 0o600).await.unwrap();
         let mut accounts = Accounts::new();
-        accounts.load(file).await.unwrap();
+        accounts.load(&file).await.unwrap();
         assert_eq!(accounts.list(), list);
     }
 }
