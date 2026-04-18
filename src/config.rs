@@ -4,6 +4,7 @@ use std::path::PathBuf;
 const DIR_PERMISSIONS: u32 = 0o700;
 const ACCOUNTS_FILE: &str = "accounts.json";
 const ACCOUNTS_FILE_PERMISSIONS: u32 = 0o600;
+const SESSION_FILE_PERMISSIONS: u32 = 0o600;
 
 const VERSION: &str = "0.1.0";
 
@@ -47,11 +48,13 @@ struct Args {
     sockfile: String,
 }
 
+#[derive(Clone)]
 pub struct Config {
     pub dir: PathBuf,
     pub dir_permissions: u32,
     pub accounts_file: PathBuf,
     pub accounts_file_permissions: u32,
+    pub session_file_permissions: u32,
     pub loglevel: String,
 }
 
@@ -81,6 +84,7 @@ impl Config {
             dir_permissions: DIR_PERMISSIONS,
             accounts_file: accounts_file,
             accounts_file_permissions: ACCOUNTS_FILE_PERMISSIONS,
+            session_file_permissions: SESSION_FILE_PERMISSIONS,
             loglevel: args.loglevel,
         }
     }

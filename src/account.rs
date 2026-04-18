@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::matrix::{Client, Event};
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
@@ -52,9 +53,10 @@ impl Account {
     }
 
     // TODO: send channel back in event?
-    pub fn start(&self, from_matrix: mpsc::Sender<Event>) -> mpsc::Sender<Event> {
+    pub fn start(&self, config: Config, from_matrix: mpsc::Sender<Event>) -> mpsc::Sender<Event> {
         let (user, server) = self.split_user();
         let client = Client::new(
+            config,
             &server,
             &user,
             &self.password,

@@ -278,7 +278,7 @@ impl Daemon {
             if account.protocol != "matrix" {
                 continue;
             }
-            let tx = account.start(from_matrix_tx.clone());
+            let tx = account.start(self.config.clone(), from_matrix_tx.clone());
             self.matrix_clients.insert(account.id, tx);
         }
 

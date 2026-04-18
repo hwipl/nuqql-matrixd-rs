@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::message::Message;
 use matrix_sdk::{
     LoopCtrl, Room, RoomMemberships, RoomState,
@@ -16,7 +17,6 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 use urlencoding::encode;
 
-const SESSION_FILE_PERMISSIONS: u32 = 0o600;
 const DB_FILE_PERMISSIONS: u32 = 0o600;
 const DIR_PERMISSIONS: u32 = 0o700;
 
@@ -26,6 +26,7 @@ pub enum Event {
 }
 
 pub struct Client {
+    config: Config,
     server: String,
     user: String,
     password: String,
@@ -38,6 +39,7 @@ pub struct Client {
 
 impl Client {
     pub fn new(
+        config: Config,
         server: &str,
         user: &str,
         password: &str,
@@ -45,6 +47,7 @@ impl Client {
         secret_store_key: &str,
     ) -> Self {
         Client {
+            config,
             server: server.into(),
             user: user.into(),
             password: password.into(),
@@ -351,7 +354,7 @@ impl Client {
             .write(true)
             .create(true)
             .truncate(true)
-            .mode(SESSION_FILE_PERMISSIONS)
+            .mode(self.config.session_file_permissions)
             .open(&self.session_file)
             .await?;
         file.write_all(&serialized_session).await?;
@@ -374,7 +377,7 @@ impl Client {
     async fn set_session_permissions(&self) -> anyhow::Result<()> {
         tokio::fs::set_permissions(
             &self.session_file,
-            std::fs::Permissions::from_mode(SESSION_FILE_PERMISSIONS),
+            std::fs::Permissions::from_mode(self.config.session_file_permissions),
         )
         .await?;
         Ok(())
