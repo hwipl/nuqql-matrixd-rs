@@ -17,7 +17,6 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 use urlencoding::encode;
 
-const DB_FILE_PERMISSIONS: u32 = 0o600;
 const DIR_PERMISSIONS: u32 = 0o700;
 
 #[derive(Debug)]
@@ -394,7 +393,7 @@ impl Client {
                 }
                 tokio::fs::set_permissions(
                     path,
-                    std::fs::Permissions::from_mode(DB_FILE_PERMISSIONS),
+                    std::fs::Permissions::from_mode(self.config.db_file_permissions),
                 )
                 .await?;
             } else {
