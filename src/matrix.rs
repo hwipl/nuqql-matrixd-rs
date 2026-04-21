@@ -17,8 +17,6 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 use urlencoding::encode;
 
-const DIR_PERMISSIONS: u32 = 0o700;
-
 #[derive(Debug)]
 pub enum Event {
     Message(Message),
@@ -323,7 +321,7 @@ impl Client {
         // create dir with permissions
         tokio::fs::DirBuilder::new()
             .recursive(true)
-            .mode(DIR_PERMISSIONS)
+            .mode(self.config.dir_permissions)
             .create(&self.db_path)
             .await?;
 
