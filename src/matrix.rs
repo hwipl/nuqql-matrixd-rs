@@ -12,6 +12,7 @@ use matrix_sdk::{
     ruma::{RoomId, UserId},
 };
 use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
@@ -28,8 +29,8 @@ pub struct Client {
     user: String,
     password: String,
 
-    session_file: std::path::PathBuf,
-    db_path: std::path::PathBuf,
+    session_file: PathBuf,
+    db_path: PathBuf,
     db_passphrase: String,
     secret_store_key: String,
 }
@@ -43,14 +44,18 @@ impl Client {
         db_passphrase: &str,
         secret_store_key: &str,
     ) -> Self {
+        let session_file: PathBuf = ["data", server, user, "session"].iter().collect();
+        let session_file = config.dir.join(session_file);
+        let db_path: PathBuf = ["data", server, user, "db"].iter().collect();
+        let db_path = config.dir.join(db_path);
         Client {
             config,
             server: server.into(),
             user: user.into(),
             password: password.into(),
 
-            session_file: ["data", server, user, "session"].iter().collect(),
-            db_path: ["data", server, user, "db"].iter().collect(),
+            session_file,
+            db_path,
             db_passphrase: db_passphrase.into(),
             secret_store_key: secret_store_key.into(),
         }
