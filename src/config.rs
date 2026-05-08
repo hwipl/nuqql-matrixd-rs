@@ -82,9 +82,9 @@ impl Config {
 
         // create config
         Self {
-            dir: dir,
+            dir,
             dir_permissions: DIR_PERMISSIONS,
-            accounts_file: accounts_file,
+            accounts_file,
             accounts_file_permissions: ACCOUNTS_FILE_PERMISSIONS,
             session_file_permissions: SESSION_FILE_PERMISSIONS,
             db_file_permissions: DB_FILE_PERMISSIONS,

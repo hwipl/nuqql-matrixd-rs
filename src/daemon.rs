@@ -82,7 +82,14 @@ impl Daemon {
                 password,
             } => {
                 self.accounts.add(protocol, user, password);
-                if let Err(err) = self.accounts.save(&self.config.accounts_file, self.config.accounts_file_permissions).await {
+                if let Err(err) = self
+                    .accounts
+                    .save(
+                        &self.config.accounts_file,
+                        self.config.accounts_file_permissions,
+                    )
+                    .await
+                {
                     error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
                 }
                 Ok(())
@@ -90,7 +97,14 @@ impl Daemon {
             Message::AccountDelete { id } => {
                 if let Ok(id) = id.parse::<u32>() {
                     self.accounts.remove(&id);
-                    if let Err(err) = self.accounts.save(&self.config.accounts_file, self.config.accounts_file_permissions).await {
+                    if let Err(err) = self
+                        .accounts
+                        .save(
+                            &self.config.accounts_file,
+                            self.config.accounts_file_permissions,
+                        )
+                        .await
+                    {
                         error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
                     }
                 }
