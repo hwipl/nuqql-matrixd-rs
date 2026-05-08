@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-const DIR_PERMISSIONS: u32 = 0o700;
+const DIR_PERMISSIONS: &str = "700";
 const ACCOUNTS_FILE: &str = "accounts.json";
 const ACCOUNTS_FILE_PERMISSIONS: u32 = 0o600;
 const SESSION_FILE_PERMISSIONS: u32 = 0o600;
@@ -23,6 +23,10 @@ struct Args {
     /// set working directory
     #[clap(long, default_value = "")]
     dir: String,
+
+    /// set permissions of working directory in octal representation
+    #[clap(long, value_parser = parse_permissions, default_value = DIR_PERMISSIONS)]
+    dir_permissions: u32,
 
     /// disable message history
     #[clap(long)]
@@ -47,6 +51,14 @@ struct Args {
     /// set AF_UNIX socket file in working directory
     #[clap(long, default_value = "nuqql-matrix.sock")]
     sockfile: String,
+}
+
+fn parse_permissions(string: &str) -> anyhow::Result<u32> {
+    let perm = u32::from_str_radix(string, 8)?;
+    if perm < 0o100 || perm > 0o777 {
+        anyhow::bail!("Invalid permissions: {perm:o}");
+    }
+    Ok(perm)
 }
 
 #[derive(Clone)]
@@ -83,7 +95,7 @@ impl Config {
         // create config
         Self {
             dir,
-            dir_permissions: DIR_PERMISSIONS,
+            dir_permissions: args.dir_permissions,
             accounts_file,
             accounts_file_permissions: ACCOUNTS_FILE_PERMISSIONS,
             session_file_permissions: SESSION_FILE_PERMISSIONS,
