@@ -3,9 +3,7 @@ use std::path::PathBuf;
 
 const DIR_PERMISSIONS: &str = "700";
 const ACCOUNTS_FILE: &str = "accounts.json";
-const ACCOUNTS_FILE_PERMISSIONS: u32 = 0o600;
-const SESSION_FILE_PERMISSIONS: u32 = 0o600;
-const DB_FILE_PERMISSIONS: u32 = 0o600;
+const FILE_PERMISSIONS: &str = "600";
 
 const VERSION: &str = "0.1.0";
 
@@ -31,6 +29,10 @@ struct Args {
     /// disable message history
     #[clap(long)]
     disable_history: bool,
+
+    /// set permissions of files in octal representation
+    #[clap(long, value_parser = parse_permissions, default_value = FILE_PERMISSIONS)]
+    file_permissions: u32,
 
     /// enable filtering of own messages
     #[clap(long)]
@@ -97,9 +99,9 @@ impl Config {
             dir,
             dir_permissions: args.dir_permissions,
             accounts_file,
-            accounts_file_permissions: ACCOUNTS_FILE_PERMISSIONS,
-            session_file_permissions: SESSION_FILE_PERMISSIONS,
-            db_file_permissions: DB_FILE_PERMISSIONS,
+            accounts_file_permissions: args.file_permissions,
+            session_file_permissions: args.file_permissions,
+            db_file_permissions: args.file_permissions,
             loglevel: args.loglevel,
         }
     }
