@@ -1,3 +1,6 @@
+// set recursion limit for matrix-sdk
+#![recursion_limit = "256"]
+
 mod account;
 mod config;
 mod daemon;
