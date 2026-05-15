@@ -57,7 +57,7 @@ struct Args {
 
 fn parse_permissions(string: &str) -> anyhow::Result<u32> {
     let perm = u32::from_str_radix(string, 8)?;
-    if perm < 0o100 || perm > 0o777 {
+    if !(0o100..=0o777).contains(&perm) {
         anyhow::bail!("Invalid permissions: {perm:o}");
     }
     Ok(perm)

@@ -50,6 +50,7 @@ pub enum Message {
     },
     // message
     // message: <acc_id> <destination> <timestamp> <sender> <msg>
+    #[allow(clippy::enum_variant_names)]
     Message {
         account_id: String,
         destination: String,
@@ -59,11 +60,13 @@ pub enum Message {
     },
     // collect (old) messages
     // account <id> collect
+    #[allow(clippy::enum_variant_names)]
     MessageCollect {
         account_id: String,
     },
     // send message
     // account <id> send <user> <msg>
+    #[allow(clippy::enum_variant_names)]
     MessageSend {
         account_id: String,
         destination: String,
@@ -113,6 +116,7 @@ pub enum Message {
     },
     // chat message
     // chat: msg: <acc_id> <chat> <timestamp> <sender> <message>
+    #[allow(clippy::enum_variant_names)]
     ChatMessage {
         account_id: String,
         chat: String,
