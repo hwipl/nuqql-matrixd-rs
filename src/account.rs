@@ -94,10 +94,11 @@ impl Accounts {
         u32::MAX
     }
 
-    pub fn add(&mut self, protocol: String, user: String, password: String) {
+    pub fn add(&mut self, protocol: String, user: String, password: String) -> Account {
         let id = self.get_free_account_id();
         let account = Account::new(id, protocol, user, password);
-        self.accounts.insert(id, account);
+        self.accounts.insert(id, account.clone());
+        account
     }
 
     pub fn remove(&mut self, id: &u32) {

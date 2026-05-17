@@ -30,7 +30,7 @@ impl Daemon {
         }
     }
 
-    async fn handle_message(&mut self, msg: Message) -> anyhow::Result<()> {
+    async fn handle_message(&mut self, msg: Message, from_matrix_tx: &mpsc::Sender<Event>) -> anyhow::Result<()> {
         debug!(%msg, "Handling message");
         match msg {
             Message::Help => {
@@ -81,7 +81,11 @@ impl Daemon {
                 user,
                 password,
             } => {
-                self.accounts.add(protocol, user, password);
+                let account = self.accounts.add(protocol, user, password);
+                if account.protocol == "matrix" {
+                    let tx = account.start(self.config.clone(), from_matrix_tx.clone());
+                    self.matrix_clients.insert(account.id, tx);
+                }
                 if let Err(err) = self
                     .accounts
                     .save(
@@ -323,7 +327,7 @@ impl Daemon {
                 // handle message from client
                 Some(msg) = self.queue.get_message() => match msg {
                     Some(msg) => {
-                        if let Err(err) = self.handle_message(msg).await {
+                        if let Err(err) = self.handle_message(msg, &from_matrix_tx).await {
                             // client broken?
                             error!(error = %err, "Error handling message");
                             self.queue.set_client(None).await;
