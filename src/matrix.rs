@@ -1,7 +1,6 @@
 use crate::config::Config;
 use crate::message::Message;
 use matrix_sdk::{
-    LoopCtrl, Room, RoomMemberships, RoomState,
     authentication::matrix::MatrixSession,
     config::SyncSettings,
     event_handler::Ctx,
@@ -10,6 +9,7 @@ use matrix_sdk::{
         MessageType, OriginalSyncRoomMessageEvent, RoomMessageEventContent,
     },
     ruma::{RoomId, UserId},
+    Room, RoomMemberships, RoomState,
 };
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -421,12 +421,7 @@ impl Client {
         client.add_event_handler_context(account_id);
         client.add_event_handler_context(from_matrix);
         client.add_event_handler(Self::handle_room_message);
-        client
-            .sync_with_result_callback(sync_settings, |sync_result| async move {
-                sync_result?;
-                Ok(LoopCtrl::Continue)
-            })
-            .await?;
+        client.sync(sync_settings).await?;
 
         Ok(())
     }
