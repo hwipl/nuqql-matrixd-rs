@@ -100,6 +100,7 @@ impl Daemon {
             }
             Message::AccountDelete { id } => {
                 if let Ok(id) = id.parse::<u32>() {
+                    // remove account
                     self.accounts.remove(&id);
                     if let Err(err) = self
                         .accounts
@@ -111,6 +112,13 @@ impl Daemon {
                     {
                         error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
                     }
+
+                    // stop client
+                    if let Some(client) = self.matrix_clients.get(&id)
+                        && let Err(error) = client.send(Event::Stop).await {
+                        error!(%error, "Could not send stop event");
+                    }
+                    self.matrix_clients.remove(&id);
                 }
                 Ok(())
             }
@@ -346,6 +354,7 @@ impl Daemon {
                     info!(?event, "Received matrix event");
                     match event {
                         Event::Message(msg) => self.queue.send(msg).await,
+                        Event::Stop => (),
                     }
                 }
             }

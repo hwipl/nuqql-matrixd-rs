@@ -14,13 +14,14 @@ use matrix_sdk::{
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, info};
 use urlencoding::encode;
 
 #[derive(Debug)]
 pub enum Event {
     Message(Message),
+    Stop,
 }
 
 pub struct Client {
@@ -123,7 +124,8 @@ impl Client {
         debug!(self.server, self.user, "Matrix client logged in");
         let c = client.clone();
         let from = from_matrix.clone();
-        tokio::spawn(async move { Self::sync(c, account_id, from).await });
+        let (stop_tx, stop_rx) = oneshot::channel();
+        let task = tokio::spawn(async move { Self::sync(c, account_id, from, stop_rx).await });
 
         // handle events (outgoing events to matrix)
         while let Some(msg) = to_matrix.recv().await {
@@ -288,10 +290,15 @@ impl Client {
                     }
                 }
 
+                Event::Stop => break,
+
                 _ => (),
             };
         }
-        Ok(())
+        if stop_tx.send(()).is_err() {
+            error!("Could not send stop event to sync task");
+        }
+        task.await?
     }
 
     async fn restore_session(&self) -> anyhow::Result<matrix_sdk::Client> {
@@ -411,6 +418,7 @@ impl Client {
         client: matrix_sdk::Client,
         account_id: u32,
         from_matrix: mpsc::Sender<Event>,
+        stop: oneshot::Receiver<()>,
     ) -> anyhow::Result<()> {
         // Enable room members lazy-loading, it will speed up the initial sync a lot
         // with accounts in lots of rooms.
@@ -421,7 +429,10 @@ impl Client {
         client.add_event_handler_context(account_id);
         client.add_event_handler_context(from_matrix);
         client.add_event_handler(Self::handle_room_message);
-        client.sync(sync_settings).await?;
+        tokio::select! {
+            _ = stop => (),
+            r = client.sync(sync_settings) => r?,
+        }
 
         Ok(())
     }
