@@ -32,7 +32,7 @@ impl Account {
     }
 
     /// Splits the user into user name and server.
-    fn split_user(&self) -> (String, String) {
+    pub fn split_user(&self) -> (String, String) {
         match self.user.split_once("@") {
             Some(("", server)) => (self.user.clone(), server.into()),
             Some((user, "")) => (user.into(), self.user.clone()),
@@ -109,6 +109,10 @@ impl Accounts {
         let mut list: Vec<Account> = self.accounts.values().cloned().collect();
         list.sort_by_key(|x| x.id);
         list
+    }
+
+    pub fn get(&self, id: &u32) -> Option<&Account> {
+        self.accounts.get(id)
     }
 
     pub async fn save(&self, file: &Path, permissions: u32) -> anyhow::Result<()> {

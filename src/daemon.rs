@@ -6,6 +6,7 @@ use crate::queue::Queue;
 use crate::server::{self, Server};
 use anyhow::Context;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
@@ -99,7 +100,23 @@ impl Daemon {
                 Ok(())
             }
             Message::AccountDelete { id } => {
-                if let Ok(id) = id.parse::<u32>() {
+                if let Ok(id) = id.parse::<u32>() &&
+                    let Some(account) = self.accounts.get(&id) {
+                    // stop client
+                    if let Some(client) = self.matrix_clients.get(&id)
+                        && let Err(error) = client.send(Event::Stop).await {
+                        error!(%error, "Could not send stop event");
+                    }
+                    self.matrix_clients.remove(&id);
+
+                    // remove client data files
+                    let (user, server) = account.split_user();
+                    let data_folder: PathBuf = ["data", &server, &user].iter().collect();
+                    let data_folder = self.config.dir.join(data_folder);
+                    if let Err(error) = tokio::fs::remove_dir_all(&data_folder).await {
+                        error!(data_folder = %data_folder.to_string_lossy(), %error, "Could not remove client data directory");
+                    }
+
                     // remove account
                     self.accounts.remove(&id);
                     if let Err(err) = self
@@ -112,13 +129,6 @@ impl Daemon {
                     {
                         error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
                     }
-
-                    // stop client
-                    if let Some(client) = self.matrix_clients.get(&id)
-                        && let Err(error) = client.send(Event::Stop).await {
-                        error!(%error, "Could not send stop event");
-                    }
-                    self.matrix_clients.remove(&id);
                 }
                 Ok(())
             }
