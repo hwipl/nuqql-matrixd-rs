@@ -7,7 +7,7 @@ use crate::server::{self, Server};
 use anyhow::Context;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, info, warn};
 
 struct Daemon {
@@ -103,9 +103,14 @@ impl Daemon {
                 if let Ok(id) = id.parse::<u32>() &&
                     let Some(account) = self.accounts.get(&id) {
                     // stop client
-                    if let Some(client) = self.matrix_clients.get(&id)
-                        && let Err(error) = client.send(Event::Stop).await {
-                        error!(%error, "Could not send stop event");
+                    if let Some(client) = self.matrix_clients.get(&id) {
+                        let (done_tx, done_rx) = oneshot::channel();
+                        if let Err(error) = client.send(Event::Stop(done_tx)).await {
+                            error!(%error, "Could not send stop event");
+                        }
+                        if let Err(error) = done_rx.await {
+                            error!(%error, "Could not get stopped event");
+                        }
                     }
                     self.matrix_clients.remove(&id);
 
@@ -364,7 +369,7 @@ impl Daemon {
                     info!(?event, "Received matrix event");
                     match event {
                         Event::Message(msg) => self.queue.send(msg).await,
-                        Event::Stop => (),
+                        Event::Stop(_) => (),
                     }
                 }
             }

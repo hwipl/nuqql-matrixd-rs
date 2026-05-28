@@ -21,7 +21,7 @@ use urlencoding::encode;
 #[derive(Debug)]
 pub enum Event {
     Message(Message),
-    Stop,
+    Stop(oneshot::Sender<()>),
 }
 
 pub struct Client {
@@ -128,6 +128,7 @@ impl Client {
         let task = tokio::spawn(async move { Self::sync(c, account_id, from, stop_rx).await });
 
         // handle events (outgoing events to matrix)
+        let mut stopped = None;
         while let Some(msg) = to_matrix.recv().await {
             info!("Received event message to be handled by matrix");
             match msg {
@@ -290,15 +291,28 @@ impl Client {
                     }
                 }
 
-                Event::Stop => break,
+                Event::Stop(done) => {
+                    stopped = Some(done);
+                    break;
+                }
 
                 _ => (),
             };
         }
+        // stop sync task
         if stop_tx.send(()).is_err() {
             error!("Could not send stop event to sync task");
         }
-        task.await?
+        // wait for sync task
+        if let Err(error) = task.await? {
+            error!(%error, "Sync task returned error");
+        }
+        // notify caller that client is stopped
+        if let Some(stopped) = stopped
+            && stopped.send(()).is_err() {
+            error!("Could not send stopped event back to caller");
+        }
+        Ok(())
     }
 
     async fn restore_session(&self) -> anyhow::Result<matrix_sdk::Client> {
