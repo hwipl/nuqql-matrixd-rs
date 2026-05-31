@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::message::Message;
 use matrix_sdk::{
+    Room, RoomMemberships, RoomState,
     authentication::matrix::MatrixSession,
     config::SyncSettings,
     event_handler::Ctx,
@@ -9,7 +10,6 @@ use matrix_sdk::{
         MessageType, OriginalSyncRoomMessageEvent, RoomMessageEventContent,
     },
     ruma::{RoomId, UserId},
-    Room, RoomMemberships, RoomState,
 };
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;

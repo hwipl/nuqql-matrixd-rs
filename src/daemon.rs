@@ -31,7 +31,11 @@ impl Daemon {
         }
     }
 
-    async fn handle_message(&mut self, msg: Message, from_matrix_tx: &mpsc::Sender<Event>) -> anyhow::Result<()> {
+    async fn handle_message(
+        &mut self,
+        msg: Message,
+        from_matrix_tx: &mpsc::Sender<Event>,
+    ) -> anyhow::Result<()> {
         debug!(%msg, "Handling message");
         match msg {
             Message::Help => {
@@ -100,8 +104,9 @@ impl Daemon {
                 Ok(())
             }
             Message::AccountDelete { id } => {
-                if let Ok(id) = id.parse::<u32>() &&
-                    let Some(account) = self.accounts.get(&id) {
+                if let Ok(id) = id.parse::<u32>()
+                    && let Some(account) = self.accounts.get(&id)
+                {
                     // stop client
                     if let Some(client) = self.matrix_clients.get(&id) {
                         let (done_tx, done_rx) = oneshot::channel();
