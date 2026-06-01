@@ -92,7 +92,7 @@ impl Client {
         &self,
         account_id: u32,
         from_matrix: mpsc::Sender<Event>,
-        to_matrix: mpsc::Receiver<Event>,
+        mut to_matrix: mpsc::Receiver<Event>,
     ) -> anyhow::Result<()> {
         // client
         let client = if self.session_file.exists() {
@@ -119,40 +119,49 @@ impl Client {
                 Err(error) => error!(%error, "Could not open secret store"),
             }
         }
-
-        // client sync (incoming events from matrix)
         debug!(self.server, self.user, "Matrix client logged in");
-        let c = client.clone();
-        let from = from_matrix.clone();
-        let (stop_tx, stop_rx) = oneshot::channel();
-        let task = tokio::spawn(async move { Self::sync(c, account_id, from, stop_rx).await });
 
-        // handle events (outgoing events to matrix)
-        let event = self
-            .handle_to_matrix_events(from_matrix, to_matrix, client)
-            .await;
+        loop {
+            // client sync (incoming events from matrix)
+            let c = client.clone();
+            let from = from_matrix.clone();
+            let (stop_tx, stop_rx) = oneshot::channel();
+            let task = tokio::spawn(async move { Self::sync(c, account_id, from, stop_rx).await });
 
-        // stop sync task
-        if stop_tx.send(()).is_err() {
-            error!("Could not send stop event to sync task");
+            // handle events (outgoing events to matrix)
+            let event = self
+                .handle_to_matrix_events(&from_matrix, &mut to_matrix, &client)
+                .await;
+
+            // stop sync task
+            if stop_tx.send(()).is_err() {
+                error!("Could not send stop event to sync task");
+            }
+            // wait for sync task
+            if let Err(error) = task.await? {
+                error!(%error, "Sync task returned error");
+            }
+
+            match event {
+                Some(Event::Stop(stopped)) => {
+                    // notify caller that client is stopped
+                    if stopped.send(()).is_err() {
+                        error!("Could not send stopped event back to caller");
+                    }
+                }
+                // other or no event, just return
+                Some(_) | None => break,
+            }
         }
-        // wait for sync task
-        if let Err(error) = task.await? {
-            error!(%error, "Sync task returned error");
-        }
-        // notify caller that client is stopped
-        if let Some(Event::Stop(stopped)) = event
-            && stopped.send(()).is_err() {
-            error!("Could not send stopped event back to caller");
-        }
+
         Ok(())
     }
 
     async fn handle_to_matrix_events(
         &self,
-        from_matrix: mpsc::Sender<Event>,
-        mut to_matrix: mpsc::Receiver<Event>,
-        client: matrix_sdk::Client,
+        from_matrix: &mpsc::Sender<Event>,
+        to_matrix: &mut mpsc::Receiver<Event>,
+        client: &matrix_sdk::Client,
     ) -> Option<Event> {
         while let Some(msg) = to_matrix.recv().await {
             info!("Received event message to be handled by matrix");
@@ -186,7 +195,7 @@ impl Client {
                     message,
                     ..
                 }) => {
-                    Self::send_message(&client, destination, message).await;
+                    Self::send_message(client, destination, message).await;
                 }
 
                 Event::Message(Message::StatusGet { account_id }) => {
@@ -259,7 +268,7 @@ impl Client {
                 }
 
                 Event::Message(Message::ChatMessageSend { chat, message, .. }) => {
-                    Self::send_message(&client, chat, message).await;
+                    Self::send_message(client, chat, message).await;
                 }
 
                 Event::Message(Message::ChatUserList { account_id, chat }) => {
