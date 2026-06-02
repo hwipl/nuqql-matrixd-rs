@@ -1,7 +1,6 @@
 use crate::config::Config;
 use crate::message::Message;
 use matrix_sdk::{
-    Room, RoomMemberships, RoomState,
     authentication::matrix::MatrixSession,
     config::SyncSettings,
     event_handler::Ctx,
@@ -9,7 +8,9 @@ use matrix_sdk::{
     ruma::events::room::message::{
         MessageType, OriginalSyncRoomMessageEvent, RoomMessageEventContent,
     },
+    ruma::presence::PresenceState,
     ruma::{RoomId, UserId},
+    Room, RoomMemberships, RoomState,
 };
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
@@ -126,7 +127,11 @@ impl Client {
             let c = client.clone();
             let from = from_matrix.clone();
             let (stop_tx, stop_rx) = oneshot::channel();
-            let task = tokio::spawn(async move { Self::sync(c, account_id, from, stop_rx).await });
+            let presence = PresenceState::Online;
+            let task =
+                tokio::spawn(
+                    async move { Self::sync(c, account_id, from, stop_rx, presence).await },
+                );
 
             // handle events (outgoing events to matrix)
             let event = self
@@ -453,12 +458,15 @@ impl Client {
         account_id: u32,
         from_matrix: mpsc::Sender<Event>,
         stop: oneshot::Receiver<()>,
+        presence: PresenceState,
     ) -> anyhow::Result<()> {
         // Enable room members lazy-loading, it will speed up the initial sync a lot
         // with accounts in lots of rooms.
         // See <https://spec.matrix.org/v1.6/client-server-api/#lazy-loading-room-members>.
         let filter = FilterDefinition::with_lazy_loading();
-        let sync_settings = SyncSettings::default().filter(filter.into());
+        let sync_settings = SyncSettings::default()
+            .filter(filter.into())
+            .set_presence(presence);
 
         client.add_event_handler_context(account_id);
         client.add_event_handler_context(from_matrix);
