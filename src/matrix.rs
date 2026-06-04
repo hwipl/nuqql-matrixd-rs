@@ -122,16 +122,15 @@ impl Client {
         }
         debug!(self.server, self.user, "Matrix client logged in");
 
+        let mut presence = PresenceState::Online;
         loop {
             // client sync (incoming events from matrix)
             let c = client.clone();
             let from = from_matrix.clone();
             let (stop_tx, stop_rx) = oneshot::channel();
-            let presence = PresenceState::Online;
+            let p = presence.clone();
             let task =
-                tokio::spawn(
-                    async move { Self::sync(c, account_id, from, stop_rx, presence).await },
-                );
+                tokio::spawn(async move { Self::sync(c, account_id, from, stop_rx, p).await });
 
             // handle events (outgoing events to matrix)
             let event = self
@@ -154,6 +153,12 @@ impl Client {
                         error!("Could not send stopped event back to caller");
                     }
                 }
+                Some(Event::Message(Message::StatusSet { status, .. })) => match status.as_str() {
+                    "online" => presence = PresenceState::Online,
+                    "away" => presence = PresenceState::Unavailable,
+                    "offline" => presence = PresenceState::Offline,
+                    _ => (),
+                },
                 // other or no event, just return
                 Some(_) | None => break,
             }
@@ -218,10 +223,7 @@ impl Client {
                 }
 
                 Event::Message(Message::StatusSet { .. }) => {
-                    let msg = Message::error("status cannot be changed");
-                    if let Err(error) = from_matrix.send(Event::Message(msg)).await {
-                        error!(%error, "Could not send message event");
-                    };
+                    return Some(msg);
                 }
 
                 Event::Message(Message::ChatList { account_id }) => {
