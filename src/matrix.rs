@@ -134,7 +134,7 @@ impl Client {
 
             // handle events (outgoing events to matrix)
             let event = self
-                .handle_to_matrix_events(&from_matrix, &mut to_matrix, &client)
+                .handle_to_matrix_events(&from_matrix, &mut to_matrix, &client, &presence)
                 .await;
 
             // stop sync task
@@ -153,12 +153,11 @@ impl Client {
                         error!("Could not send stopped event back to caller");
                     }
                 }
-                Some(Event::Message(Message::StatusSet { status, .. })) => match status.as_str() {
-                    "online" => presence = PresenceState::Online,
-                    "away" => presence = PresenceState::Unavailable,
-                    "offline" => presence = PresenceState::Offline,
-                    _ => (),
-                },
+                Some(Event::Message(Message::StatusSet { status, .. })) => {
+                    if let Some(p) = Self::convert_status_to_presence(&status) {
+                        presence = p;
+                    }
+                }
                 // other or no event, just return
                 Some(_) | None => break,
             }
@@ -167,11 +166,31 @@ impl Client {
         Ok(())
     }
 
+    fn convert_status_to_presence(status: &str) -> Option<PresenceState> {
+        match status {
+            "online" => Some(PresenceState::Online),
+            "away" => Some(PresenceState::Unavailable),
+            "offline" => Some(PresenceState::Offline),
+            _ => None,
+        }
+    }
+
+    fn convert_presence_to_status(presence: &PresenceState) -> String {
+        match presence {
+            PresenceState::Online => "online",
+            PresenceState::Unavailable => "away",
+            PresenceState::Offline => "offline",
+            _ => "unknown",
+        }
+        .into()
+    }
+
     async fn handle_to_matrix_events(
         &self,
         from_matrix: &mpsc::Sender<Event>,
         to_matrix: &mut mpsc::Receiver<Event>,
         client: &matrix_sdk::Client,
+        presence: &PresenceState,
     ) -> Option<Event> {
         while let Some(msg) = to_matrix.recv().await {
             info!("Received event message to be handled by matrix");
@@ -212,7 +231,7 @@ impl Client {
                     let msg = Message::Status {
                         account_id: account_id.clone(),
                         status: if client.is_active() {
-                            "online".into()
+                            Self::convert_presence_to_status(presence)
                         } else {
                             "offline".into()
                         },
