@@ -1,13 +1,9 @@
-use crate::config::Config;
-use crate::matrix::{Client, Event};
 use rand::distr::{Alphanumeric, SampleString};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::sync::mpsc;
-use tracing::error;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Account {
@@ -50,27 +46,6 @@ impl Account {
     pub fn get_status(&self) -> String {
         // TODO: get real status
         "offline".into()
-    }
-
-    // TODO: send channel back in event?
-    pub fn start(&self, config: Config, from_matrix: mpsc::Sender<Event>) -> mpsc::Sender<Event> {
-        let (user, server) = self.split_user();
-        let client = Client::new(
-            config,
-            &server,
-            &user,
-            &self.password,
-            &self.db_passphrase,
-            &self.secret_store_key,
-        );
-        let account_id = self.id;
-        let (to_matrix_tx, to_matrix_rx) = mpsc::channel(1);
-        tokio::spawn(async move {
-            if let Err(err) = client.start(account_id, from_matrix, to_matrix_rx).await {
-                error!(user, server, error = %err, "Could not start matrix client")
-            }
-        });
-        to_matrix_tx
     }
 }
 
