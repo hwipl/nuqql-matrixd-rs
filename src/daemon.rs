@@ -56,6 +56,18 @@ impl Daemon {
         to_matrix_tx
     }
 
+    async fn stop_account(&self, id: u32) {
+        if let Some(client) = self.matrix_clients.get(&id) {
+            let (done_tx, done_rx) = oneshot::channel();
+            if let Err(error) = client.send(Event::Stop(done_tx)).await {
+                error!(%error, "Could not send stop event");
+            }
+            if let Err(error) = done_rx.await {
+                error!(%error, "Could not get stopped event");
+            }
+        }
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -133,15 +145,7 @@ impl Daemon {
                     && let Some(account) = self.accounts.get(&id)
                 {
                     // stop client
-                    if let Some(client) = self.matrix_clients.get(&id) {
-                        let (done_tx, done_rx) = oneshot::channel();
-                        if let Err(error) = client.send(Event::Stop(done_tx)).await {
-                            error!(%error, "Could not send stop event");
-                        }
-                        if let Err(error) = done_rx.await {
-                            error!(%error, "Could not get stopped event");
-                        }
-                    }
+                    self.stop_account(id).await;
                     self.matrix_clients.remove(&id);
 
                     // remove client data files
