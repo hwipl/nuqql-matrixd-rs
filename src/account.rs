@@ -42,11 +42,6 @@ impl Account {
         let (_, server) = self.split_user();
         format!("({server})")
     }
-
-    pub fn get_status(&self) -> String {
-        // TODO: get real status
-        "offline".into()
-    }
 }
 
 pub struct Accounts {

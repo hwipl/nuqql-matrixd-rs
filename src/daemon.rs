@@ -101,7 +101,7 @@ impl Daemon {
                         name: account.get_name(),
                         protocol: account.protocol.clone(),
                         user: account.user.clone(),
-                        status: account.get_status(),
+                        status: "offline".into(),
                     };
                     self.queue.send(msg).await; // TODO: improve
                 }
