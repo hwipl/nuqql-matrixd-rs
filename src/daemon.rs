@@ -10,12 +10,36 @@ use std::path::PathBuf;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, info, warn};
 
+struct MatrixClients {
+    clients: HashMap<u32, mpsc::Sender<Event>>,
+}
+
+impl MatrixClients {
+    fn new() -> Self {
+        MatrixClients {
+            clients: HashMap::new(),
+        }
+    }
+
+    fn get(&self, id: &u32) -> Option<&mpsc::Sender<Event>> {
+        self.clients.get(id)
+    }
+
+    fn insert(&mut self, id: u32, tx: mpsc::Sender<Event>) {
+        self.clients.insert(id, tx);
+    }
+
+    fn remove(&mut self, id: &u32) {
+        self.clients.remove(id);
+    }
+}
+
 struct Daemon {
     config: Config,
     server: Server,
     queue: Queue,
     accounts: Accounts,
-    matrix_clients: HashMap<u32, mpsc::Sender<Event>>,
+    matrix_clients: MatrixClients,
     done: bool,
 }
 
@@ -26,7 +50,7 @@ impl Daemon {
             server,
             queue: Queue::new(),
             accounts: Accounts::new(),
-            matrix_clients: HashMap::new(),
+            matrix_clients: MatrixClients::new(),
             done: false,
         }
     }
