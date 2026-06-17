@@ -25,12 +25,33 @@ impl MatrixClients {
         self.clients.get(id)
     }
 
-    fn insert(&mut self, id: u32, tx: mpsc::Sender<Event>) {
-        self.clients.insert(id, tx);
-    }
-
     fn remove(&mut self, id: &u32) {
         self.clients.remove(id);
+    }
+
+    fn start_account(
+        &mut self,
+        config: Config,
+        account: &Account,
+        from_matrix: mpsc::Sender<Event>,
+    ) {
+        let (user, server) = account.split_user();
+        let client = Client::new(
+            config,
+            &server,
+            &user,
+            &account.password,
+            &account.db_passphrase,
+            &account.secret_store_key,
+        );
+        let account_id = account.id;
+        let (to_matrix_tx, to_matrix_rx) = mpsc::channel(1);
+        tokio::spawn(async move {
+            if let Err(err) = client.start(account_id, from_matrix, to_matrix_rx).await {
+                error!(user, server, error = %err, "Could not start matrix client")
+            }
+        });
+        self.clients.insert(account.id, to_matrix_tx);
     }
 }
 
@@ -53,31 +74,6 @@ impl Daemon {
             matrix_clients: MatrixClients::new(),
             done: false,
         }
-    }
-
-    // TODO: send channel back in event?
-    fn start_account(
-        &self,
-        account: &Account,
-        from_matrix: mpsc::Sender<Event>,
-    ) -> mpsc::Sender<Event> {
-        let (user, server) = account.split_user();
-        let client = Client::new(
-            self.config.clone(),
-            &server,
-            &user,
-            &account.password,
-            &account.db_passphrase,
-            &account.secret_store_key,
-        );
-        let account_id = account.id;
-        let (to_matrix_tx, to_matrix_rx) = mpsc::channel(1);
-        tokio::spawn(async move {
-            if let Err(err) = client.start(account_id, from_matrix, to_matrix_rx).await {
-                error!(user, server, error = %err, "Could not start matrix client")
-            }
-        });
-        to_matrix_tx
     }
 
     async fn stop_account(&self, id: u32) {
@@ -149,8 +145,7 @@ impl Daemon {
             } => {
                 let account = self.accounts.add(protocol, user, password);
                 if account.protocol == "matrix" {
-                    let tx = self.start_account(&account, from_matrix_tx.clone());
-                    self.matrix_clients.insert(account.id, tx);
+                    self.matrix_clients.start_account(self.config.clone(), &account, from_matrix_tx.clone());
                 }
                 if let Err(err) = self
                     .accounts
@@ -377,8 +372,7 @@ impl Daemon {
             if account.protocol != "matrix" {
                 continue;
             }
-            let tx = self.start_account(&account, from_matrix_tx.clone());
-            self.matrix_clients.insert(account.id, tx);
+            self.matrix_clients.start_account(self.config.clone(), &account, from_matrix_tx.clone());
         }
 
         loop {
