@@ -21,10 +21,6 @@ impl MatrixClients {
         }
     }
 
-    fn get(&self, id: &u32) -> Option<&mpsc::Sender<Event>> {
-        self.clients.get(id)
-    }
-
     fn start_account(
         &mut self,
         config: Config,
@@ -61,6 +57,13 @@ impl MatrixClients {
             }
             self.clients.remove(&id);
         }
+    }
+
+    async fn send(&self, id: u32, event: Event) -> anyhow::Result<()>{
+        if let Some(client) = self.clients.get(&id) {
+            client.send(event).await?
+        }
+        Ok(())
     }
 }
 
@@ -197,9 +200,8 @@ impl Daemon {
 
             Message::BuddyList { account_id, status } => {
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::BuddyList { account_id, status }))
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::BuddyList { account_id, status }))
                         .await
                 {
                     error!(%error, "Could not send buddy list message");
@@ -213,9 +215,8 @@ impl Daemon {
                 message,
             } => {
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::MessageSend {
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::MessageSend {
                             account_id,
                             destination,
                             message,
@@ -229,9 +230,8 @@ impl Daemon {
 
             Message::StatusGet { account_id } => {
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::StatusGet { account_id }))
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::StatusGet { account_id }))
                         .await
                 {
                     error!(%error, "Could not send status get message");
@@ -241,9 +241,8 @@ impl Daemon {
 
             Message::StatusSet { account_id, status } => {
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::StatusSet { account_id, status }))
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::StatusSet { account_id, status }))
                         .await
                 {
                     error!(%error, "Could not send status set message");
@@ -253,9 +252,8 @@ impl Daemon {
 
             Message::ChatList { account_id } => {
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::ChatList { account_id }))
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::ChatList { account_id }))
                         .await
                 {
                     error!(%error, "Could not send chat list message");
@@ -266,9 +264,8 @@ impl Daemon {
             Message::ChatJoin { account_id, chat } => {
                 info!("Received chat join message");
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::ChatJoin { account_id, chat }))
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::ChatJoin { account_id, chat }))
                         .await
                 {
                     error!(%error, "Could not send chat join message");
@@ -280,9 +277,8 @@ impl Daemon {
             Message::ChatLeave { account_id, chat } => {
                 info!("Received chat leave message");
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::ChatLeave { account_id, chat }))
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::ChatLeave { account_id, chat }))
                         .await
                 {
                     error!(%error, "Could not send chat leave message");
@@ -298,9 +294,8 @@ impl Daemon {
             } => {
                 info!("Received chat message send message");
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::ChatMessageSend {
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::ChatMessageSend {
                             account_id,
                             chat,
                             message,
@@ -316,9 +311,8 @@ impl Daemon {
             Message::ChatUserList { account_id, chat } => {
                 info!("Received chat user list message");
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::ChatUserList { account_id, chat }))
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::ChatUserList { account_id, chat }))
                         .await
                 {
                     error!(%error, "Could not send chat user list message");
@@ -333,9 +327,8 @@ impl Daemon {
             } => {
                 info!("Received chat user invite message");
                 if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(client) = self.matrix_clients.get(&id)
-                    && let Err(error) = client
-                        .send(Event::Message(Message::ChatUserInvite {
+                    && let Err(error) = self.matrix_clients
+                        .send(id, Event::Message(Message::ChatUserInvite {
                             account_id,
                             chat,
                             user,
