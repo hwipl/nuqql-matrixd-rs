@@ -10,8 +10,13 @@ use std::path::PathBuf;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, info, warn};
 
+struct MatrixClient {
+    tx: mpsc::Sender<Event>,
+    status: String,
+}
+
 struct MatrixClients {
-    clients: HashMap<u32, mpsc::Sender<Event>>,
+    clients: HashMap<u32, MatrixClient>,
 }
 
 impl MatrixClients {
@@ -19,6 +24,13 @@ impl MatrixClients {
         MatrixClients {
             clients: HashMap::new(),
         }
+    }
+
+    fn get_status(&self, id: u32) -> &str {
+        if let Some(client) = self.clients.get(&id) {
+            return &client.status;
+        }
+        "offline"
     }
 
     fn start_account(
@@ -43,13 +55,19 @@ impl MatrixClients {
                 error!(user, server, error = %err, "Could not start matrix client")
             }
         });
-        self.clients.insert(account.id, to_matrix_tx);
+        self.clients.insert(
+            account.id,
+            MatrixClient {
+                tx: to_matrix_tx,
+                status: "offline".into(),
+            },
+        );
     }
 
     async fn stop_account(&mut self, id: u32) {
         if let Some(client) = self.clients.get(&id) {
             let (done_tx, done_rx) = oneshot::channel();
-            if let Err(error) = client.send(Event::Stop(done_tx)).await {
+            if let Err(error) = client.tx.send(Event::Stop(done_tx)).await {
                 error!(%error, "Could not send stop event");
             }
             if let Err(error) = done_rx.await {
@@ -61,7 +79,7 @@ impl MatrixClients {
 
     async fn send(&self, id: u32, event: Event) -> anyhow::Result<()>{
         if let Some(client) = self.clients.get(&id) {
-            client.send(event).await?
+            client.tx.send(event).await?
         }
         Ok(())
     }
@@ -121,7 +139,7 @@ impl Daemon {
                         name: account.get_name(),
                         protocol: account.protocol.clone(),
                         user: account.user.clone(),
-                        status: "offline".into(),
+                        status: self.matrix_clients.get_status(account.id).into(),
                     };
                     self.queue.send(msg).await; // TODO: improve
                 }
