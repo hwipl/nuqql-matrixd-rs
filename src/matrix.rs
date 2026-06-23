@@ -115,13 +115,16 @@ impl Client {
             {
                 Ok(store) => {
                     if let Err(error) = store.import_secrets().await {
-                        error!(%error, "Could not import secrets from secret store");
+                        error!(account_id, %error, "Could not import secrets from secret store");
                     }
                 }
-                Err(error) => error!(%error, "Could not open secret store"),
+                Err(error) => error!(account_id, %error, "Could not open secret store"),
             }
         }
-        debug!(self.server, self.user, "Matrix client logged in");
+        debug!(
+            account_id,
+            self.server, self.user, "Matrix client logged in"
+        );
 
         let mut presence = PresenceState::Online;
         loop {
@@ -141,7 +144,7 @@ impl Client {
                 ))
                 .await
             {
-                error!(%error, "Could not send status update from client to daemon");
+                error!(account_id, %error, "Could not send status update from client to daemon");
             }
 
             // handle events (outgoing events to matrix)
@@ -151,18 +154,18 @@ impl Client {
 
             // stop sync task
             if stop_tx.send(()).is_err() {
-                error!("Could not send stop event to sync task");
+                error!(account_id, "Could not send stop event to sync task");
             }
             // wait for sync task
             if let Err(error) = task.await? {
-                error!(%error, "Sync task returned error");
+                error!(account_id, %error, "Sync task returned error");
             }
 
             match event {
                 Some(Event::Stop(stopped)) => {
                     // notify caller that client is stopped
                     if stopped.send(()).is_err() {
-                        error!("Could not send stopped event back to caller");
+                        error!(account_id, "Could not send stopped event back to caller");
                     }
                 }
                 Some(Event::Message(Message::StatusSet { status, .. })) => {
