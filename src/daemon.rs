@@ -33,6 +33,12 @@ impl MatrixClients {
         "offline"
     }
 
+    fn set_status(&mut self, id: u32, status: String) {
+        if let Some(client) = self.clients.get_mut(&id) {
+            client.status = status;
+        }
+    }
+
     fn start_account(
         &mut self,
         config: Config,
@@ -464,6 +470,7 @@ impl Daemon {
                     info!(?event, "Received matrix event");
                     match event {
                         Event::Message(msg) => self.queue.send(msg).await,
+                        Event::Status(id, status) => self.matrix_clients.set_status(id, status),
                         Event::Stop(_) => (),
                     }
                 }

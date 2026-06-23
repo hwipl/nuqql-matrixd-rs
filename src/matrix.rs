@@ -23,6 +23,7 @@ use urlencoding::encode;
 pub enum Event {
     Message(Message),
     Stop(oneshot::Sender<()>),
+    Status(u32, String),
 }
 
 pub struct Client {
@@ -131,6 +132,17 @@ impl Client {
             let p = presence.clone();
             let task =
                 tokio::spawn(async move { Self::sync(c, account_id, from, stop_rx, p).await });
+
+            // send status update to daemon
+            if let Err(error) = from_matrix
+                .send(Event::Status(
+                    account_id,
+                    Self::convert_presence_to_status(&presence),
+                ))
+                .await
+            {
+                error!(%error, "Could not send status update from client to daemon");
+            }
 
             // handle events (outgoing events to matrix)
             let event = self
