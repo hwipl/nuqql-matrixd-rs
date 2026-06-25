@@ -48,16 +48,16 @@ impl MatrixClients {
         let (user, server) = account.split_user();
         let client = Client::new(
             config,
+            account.id,
             &server,
             &user,
             &account.password,
             &account.db_passphrase,
             &account.secret_store_key,
         );
-        let account_id = account.id;
         let (to_matrix_tx, to_matrix_rx) = mpsc::channel(1);
         tokio::spawn(async move {
-            if let Err(err) = client.start(account_id, from_matrix, to_matrix_rx).await {
+            if let Err(err) = client.start(from_matrix, to_matrix_rx).await {
                 error!(user, server, error = %err, "Could not start matrix client")
             }
         });

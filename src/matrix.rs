@@ -28,6 +28,7 @@ pub enum Event {
 
 pub struct Client {
     config: Config,
+    account_id: u32,
     server: String,
     user: String,
     password: String,
@@ -41,6 +42,7 @@ pub struct Client {
 impl Client {
     pub fn new(
         config: Config,
+        account_id: u32,
         server: &str,
         user: &str,
         password: &str,
@@ -53,6 +55,7 @@ impl Client {
         let db_path = config.dir.join(db_path);
         Client {
             config,
+            account_id,
             server: server.into(),
             user: user.into(),
             password: password.into(),
@@ -92,7 +95,6 @@ impl Client {
 
     pub async fn start(
         &self,
-        account_id: u32,
         from_matrix: mpsc::Sender<Event>,
         mut to_matrix: mpsc::Receiver<Event>,
     ) -> anyhow::Result<()> {
@@ -115,14 +117,14 @@ impl Client {
             {
                 Ok(store) => {
                     if let Err(error) = store.import_secrets().await {
-                        error!(account_id, %error, "Could not import secrets from secret store");
+                        error!(self.account_id, %error, "Could not import secrets from secret store");
                     }
                 }
-                Err(error) => error!(account_id, %error, "Could not open secret store"),
+                Err(error) => error!(self.account_id, %error, "Could not open secret store"),
             }
         }
         debug!(
-            account_id,
+            self.account_id,
             self.server, self.user, "Matrix client logged in"
         );
 
@@ -130,6 +132,7 @@ impl Client {
         loop {
             // client sync (incoming events from matrix)
             let c = client.clone();
+            let account_id = self.account_id;
             let from = from_matrix.clone();
             let (stop_tx, stop_rx) = oneshot::channel();
             let p = presence.clone();
@@ -139,12 +142,12 @@ impl Client {
             // send status update to daemon
             if let Err(error) = from_matrix
                 .send(Event::Status(
-                    account_id,
+                    self.account_id,
                     Self::convert_presence_to_status(&presence),
                 ))
                 .await
             {
-                error!(account_id, %error, "Could not send status update from client to daemon");
+                error!(self.account_id, %error, "Could not send status update from client to daemon");
             }
 
             // handle events (outgoing events to matrix)
@@ -154,18 +157,21 @@ impl Client {
 
             // stop sync task
             if stop_tx.send(()).is_err() {
-                error!(account_id, "Could not send stop event to sync task");
+                error!(self.account_id, "Could not send stop event to sync task");
             }
             // wait for sync task
             if let Err(error) = task.await? {
-                error!(account_id, %error, "Sync task returned error");
+                error!(self.account_id, %error, "Sync task returned error");
             }
 
             match event {
                 Some(Event::Stop(stopped)) => {
                     // notify caller that client is stopped
                     if stopped.send(()).is_err() {
-                        error!(account_id, "Could not send stopped event back to caller");
+                        error!(
+                            self.account_id,
+                            "Could not send stopped event back to caller"
+                        );
                     }
                 }
                 Some(Event::Message(Message::StatusSet { status, .. })) => {
