@@ -77,7 +77,12 @@ impl Client {
         (name, alias)
     }
 
-    async fn send_message(client: &matrix_sdk::Client, chat: String, message: String) {
+    async fn send_message(
+        account_id: u32,
+        client: &matrix_sdk::Client,
+        chat: String,
+        message: String,
+    ) {
         let Ok(room_id) = RoomId::parse(chat) else {
             return;
         };
@@ -89,7 +94,7 @@ impl Client {
         }
         let content = RoomMessageEventContent::text_plain(message);
         if let Err(error) = room.send(content).await {
-            error!(%error, "Could not send message to room");
+            error!(account_id, %error, "Could not send message to room");
         };
     }
 
@@ -245,7 +250,7 @@ impl Client {
                     message,
                     ..
                 }) => {
-                    Self::send_message(client, destination, message).await;
+                    Self::send_message(self.account_id, client, destination, message).await;
                 }
 
                 Event::Message(Message::StatusGet { account_id }) => {
@@ -315,7 +320,7 @@ impl Client {
                 }
 
                 Event::Message(Message::ChatMessageSend { chat, message, .. }) => {
-                    Self::send_message(client, chat, message).await;
+                    Self::send_message(self.account_id, client, chat, message).await;
                 }
 
                 Event::Message(Message::ChatUserList { account_id, chat }) => {
