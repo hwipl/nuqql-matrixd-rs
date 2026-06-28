@@ -219,7 +219,10 @@ impl Client {
         presence: &PresenceState,
     ) -> Option<Event> {
         while let Some(msg) = to_matrix.recv().await {
-            info!("Received event message to be handled by matrix");
+            info!(
+                self.account_id,
+                "Received event message to be handled by matrix"
+            );
             match msg {
                 Event::Message(Message::BuddyList { account_id, .. }) => {
                     for room in client.rooms() {
@@ -240,7 +243,7 @@ impl Client {
                             alias,
                         };
                         if let Err(error) = from_matrix.send(Event::Message(msg)).await {
-                            error!(%error, "Could not send message event");
+                            error!(self.account_id, %error, "Could not send message event");
                         };
                     }
                 }
@@ -263,7 +266,7 @@ impl Client {
                         },
                     };
                     if let Err(error) = from_matrix.send(Event::Message(msg)).await {
-                        error!(%error, "Could not send message event");
+                        error!(self.account_id, %error, "Could not send message event");
                     };
                 }
 
@@ -281,7 +284,7 @@ impl Client {
                             nick: self.user.clone(),
                         };
                         if let Err(error) = from_matrix.send(Event::Message(msg)).await {
-                            error!(%error, "Could not send message event");
+                            error!(self.account_id, %error, "Could not send message event");
                         };
                     }
                 }
@@ -299,7 +302,7 @@ impl Client {
                         continue;
                     }
                     if let Err(error) = room.join().await {
-                        error!(%error, room=chat, "Could not join room");
+                        error!(self.account_id, %error, room=chat, "Could not join room");
                     }
                 }
 
@@ -315,7 +318,7 @@ impl Client {
                         continue;
                     }
                     if let Err(error) = room.join().await {
-                        error!(%error, room=chat, "Could not join room");
+                        error!(self.account_id, %error, room=chat, "Could not join room");
                     }
                 }
 
@@ -336,7 +339,7 @@ impl Client {
                     }
                     let members = match room.members(RoomMemberships::ACTIVE).await {
                         Err(error) => {
-                            error!(%error, room=chat, "Could not get room members");
+                            error!(self.account_id, %error, room=chat, "Could not get room members");
                             continue;
                         }
                         Ok(members) => members,
@@ -353,7 +356,7 @@ impl Client {
                             status: member.membership().as_str().into(),
                         };
                         if let Err(error) = from_matrix.send(Event::Message(msg)).await {
-                            error!(%error, "Could not send message event");
+                            error!(self.account_id, %error, "Could not send message event");
                         };
                     }
                 }
@@ -373,7 +376,7 @@ impl Client {
                         continue;
                     }
                     if let Err(error) = room.invite_user_by_id(&user_id).await {
-                        error!(%error, room=chat, user=user, "Could not invite user to room");
+                        error!(self.account_id, %error, room=chat, user=user, "Could not invite user to room");
                     }
                 }
 
