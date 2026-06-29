@@ -418,7 +418,7 @@ impl Client {
 
     /// Login with a new device.
     async fn login(&self) -> anyhow::Result<matrix_sdk::Client> {
-        info!("No previous session found, logging in...");
+        info!(self.account_id, "No previous session found, logging in...");
 
         // create dir with permissions
         tokio::fs::DirBuilder::new()
@@ -439,7 +439,10 @@ impl Client {
             .initial_device_display_name("nuqql-matrixd-rs")
             .await?;
 
-        debug!(self.server, self.user, "Matrix client logged");
+        debug!(
+            self.account_id,
+            self.server, self.user, "Matrix client logged"
+        );
 
         // Persist the session to reuse it later.
         // This is not very secure, for simplicity. If the system provides a way of
@@ -459,6 +462,7 @@ impl Client {
         file.write_all(&serialized_session).await?;
 
         info!(
+            self.account_id,
             session_file = %self.session_file.to_string_lossy(),
             "Session persisted",
         );
