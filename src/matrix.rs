@@ -392,6 +392,7 @@ impl Client {
 
     async fn restore_session(&self) -> anyhow::Result<matrix_sdk::Client> {
         info!(
+            self.account_id,
             session_file = %self.session_file.to_string_lossy(),
             "Previous session found'"
         );
@@ -407,7 +408,7 @@ impl Client {
             .build()
             .await?;
 
-        info!(%user_session.meta.user_id, "Restoring session for user");
+        info!(self.account_id, %user_session.meta.user_id, "Restoring session for user");
 
         // Restore the Matrix user session.
         client.restore_session(user_session).await?;
