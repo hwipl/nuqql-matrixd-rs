@@ -501,7 +501,7 @@ impl Client {
                 )
                 .await?;
             } else {
-                error!(file = %path.to_string_lossy(), "Could not get metadata of file");
+                error!(self.account_id, file = %path.to_string_lossy(), "Could not get metadata of file");
             }
         }
         Ok(())
