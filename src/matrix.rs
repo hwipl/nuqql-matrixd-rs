@@ -540,7 +540,8 @@ impl Client {
         account_id: Ctx<u32>,
         from_matrix: Ctx<mpsc::Sender<Event>>,
     ) {
-        info!(room = %room.room_id(), "Handling room message");
+        let account_id: u32 = account_id.0;
+        info!(account_id, room = %room.room_id(), "Handling room message");
 
         if room.state() != RoomState::Joined {
             return;
@@ -550,18 +551,21 @@ impl Client {
         };
 
         // TODO: handle messages properly
-        info!(text_content.body);
+        info!(account_id, text_content.body);
 
         let room_name = match room.display_name().await {
             Ok(room_name) => room_name.to_string(),
             Err(error) => {
-                error!(%error, "Error getting room display name");
+                error!(account_id, %error, "Error getting room display name");
                 // Let's fallback to the room ID.
                 room.room_id().to_string()
             }
         };
 
-        info!("[{room_name}] {}: {}", event.sender, text_content.body);
+        info!(
+            account_id,
+            "[{room_name}] {}: {}", event.sender, text_content.body
+        );
         if let Err(error) = from_matrix
             .send(Event::Message(Message::ChatMessage {
                 account_id: account_id.to_string(),
@@ -572,7 +576,7 @@ impl Client {
             }))
             .await
         {
-            error!(%error, "Could not send message event");
+            error!(account_id, %error, "Could not send message event");
         };
     }
 }
