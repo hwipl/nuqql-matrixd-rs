@@ -515,6 +515,10 @@ impl Client {
         stop: oneshot::Receiver<()>,
         presence: PresenceState,
     ) -> anyhow::Result<()> {
+        info!(
+            account_id,
+            %presence, "Starting sync task for account client"
+        );
         // Enable room members lazy-loading, it will speed up the initial sync a lot
         // with accounts in lots of rooms.
         // See <https://spec.matrix.org/v1.6/client-server-api/#lazy-loading-room-members>.
