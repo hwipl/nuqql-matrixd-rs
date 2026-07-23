@@ -112,6 +112,34 @@ impl Daemon {
         }
     }
 
+    async fn handle_message_account_add(
+        &mut self,
+        protocol: String,
+        user: String,
+        password: String,
+        from_matrix_tx: &mpsc::Sender<Event>,
+    ) -> anyhow::Result<()> {
+                let account = self.accounts.add(protocol, user, password);
+                if account.protocol == "matrix" {
+                    self.matrix_clients.start_account(
+                        self.config.clone(),
+                        &account,
+                        from_matrix_tx.clone(),
+                    );
+                }
+                if let Err(err) = self
+                    .accounts
+                    .save(
+                        &self.config.accounts_file,
+                        self.config.accounts_file_permissions,
+                    )
+                    .await
+                {
+                    error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
+                }
+                Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -167,25 +195,7 @@ impl Daemon {
                 user,
                 password,
             } => {
-                let account = self.accounts.add(protocol, user, password);
-                if account.protocol == "matrix" {
-                    self.matrix_clients.start_account(
-                        self.config.clone(),
-                        &account,
-                        from_matrix_tx.clone(),
-                    );
-                }
-                if let Err(err) = self
-                    .accounts
-                    .save(
-                        &self.config.accounts_file,
-                        self.config.accounts_file_permissions,
-                    )
-                    .await
-                {
-                    error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
-                }
-                Ok(())
+                self.handle_message_account_add(protocol, user, password, from_matrix_tx).await
             }
             Message::AccountDelete { id } => {
                 if let Ok(id) = id.parse::<u32>()
