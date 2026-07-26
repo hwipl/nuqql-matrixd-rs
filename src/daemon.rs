@@ -171,6 +171,37 @@ impl Daemon {
                 Ok(())
     }
 
+    async fn handle_message_account_delete(&mut self, id: String) -> anyhow::Result<()> {
+                if let Ok(id) = id.parse::<u32>()
+                    && let Some(account) = self.accounts.get(&id)
+                {
+                    // stop client
+                    self.matrix_clients.stop_account(id).await;
+
+                    // remove client data files
+                    let (user, server) = account.split_user();
+                    let data_folder: PathBuf = ["data", &server, &user].iter().collect();
+                    let data_folder = self.config.dir.join(data_folder);
+                    if let Err(error) = tokio::fs::remove_dir_all(&data_folder).await {
+                        error!(data_folder = %data_folder.to_string_lossy(), %error, "Could not remove client data directory");
+                    }
+
+                    // remove account
+                    self.accounts.remove(&id);
+                    if let Err(err) = self
+                        .accounts
+                        .save(
+                            &self.config.accounts_file,
+                            self.config.accounts_file_permissions,
+                        )
+                        .await
+                    {
+                        error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
+                    }
+                }
+                Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -207,34 +238,7 @@ impl Daemon {
                 self.handle_message_account_add(protocol, user, password, from_matrix_tx).await
             }
             Message::AccountDelete { id } => {
-                if let Ok(id) = id.parse::<u32>()
-                    && let Some(account) = self.accounts.get(&id)
-                {
-                    // stop client
-                    self.matrix_clients.stop_account(id).await;
-
-                    // remove client data files
-                    let (user, server) = account.split_user();
-                    let data_folder: PathBuf = ["data", &server, &user].iter().collect();
-                    let data_folder = self.config.dir.join(data_folder);
-                    if let Err(error) = tokio::fs::remove_dir_all(&data_folder).await {
-                        error!(data_folder = %data_folder.to_string_lossy(), %error, "Could not remove client data directory");
-                    }
-
-                    // remove account
-                    self.accounts.remove(&id);
-                    if let Err(err) = self
-                        .accounts
-                        .save(
-                            &self.config.accounts_file,
-                            self.config.accounts_file_permissions,
-                        )
-                        .await
-                    {
-                        error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
-                    }
-                }
-                Ok(())
+                self.handle_message_account_delete(id).await
             }
 
             Message::MessageCollect { account_id } => {
