@@ -32,7 +32,7 @@ pub enum Message {
     // delete account
     // account <id> delete
     AccountDelete {
-        id: String,
+        account_id: String,
     },
     // buddy
     // buddy: <acc_id> status: <status> name: <name> alias: [alias]
@@ -383,7 +383,11 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
 
     match s[2] {
         // account <id> delete
-        "delete" => return Some(Message::AccountDelete { id: s[1].into() }),
+        "delete" => {
+            return Some(Message::AccountDelete {
+                account_id: s[1].into(),
+            })
+        }
 
         // account <id> buddies [online]
         "buddies" => {
@@ -603,7 +607,7 @@ impl std::fmt::Display for Message {
                 user,
                 password: _,
             } => write!(f, "account add {protocol} {user} REDACTED\r\n"),
-            Message::AccountDelete { id } => write!(f, "account {id} delete\r\n"),
+            Message::AccountDelete { account_id } => write!(f, "account {account_id} delete\r\n"),
             Message::Buddy {
                 account_id,
                 status,
@@ -721,7 +725,9 @@ mod tests {
                 user: "user".into(),
                 password: "REDACTED".into(), // password is always "REDACTED" after to_string()
             },
-            Message::AccountDelete { id: "1".into() },
+            Message::AccountDelete {
+                account_id: "1".into(),
+            },
             Message::Buddy {
                 account_id: "1".into(),
                 status: "online".into(),

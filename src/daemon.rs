@@ -171,8 +171,8 @@ impl Daemon {
                 Ok(())
     }
 
-    async fn handle_message_account_delete(&mut self, id: String) -> anyhow::Result<()> {
-                if let Ok(id) = id.parse::<u32>()
+    async fn handle_message_account_delete(&mut self, account_id: String) -> anyhow::Result<()> {
+                if let Ok(id) = account_id.parse::<u32>()
                     && let Some(account) = self.accounts.get(&id)
                 {
                     // stop client
@@ -237,8 +237,8 @@ impl Daemon {
             } => {
                 self.handle_message_account_add(protocol, user, password, from_matrix_tx).await
             }
-            Message::AccountDelete { id } => {
-                self.handle_message_account_delete(id).await
+            Message::AccountDelete { account_id } => {
+                self.handle_message_account_delete(account_id).await
             }
 
             Message::MessageCollect { account_id } => {
