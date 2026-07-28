@@ -32,7 +32,7 @@ pub enum Message {
     // delete account
     // account <id> delete
     AccountDelete {
-        account_id: String,
+        account_id: u32,
     },
     // buddy
     // buddy: <acc_id> status: <status> name: <name> alias: [alias]
@@ -384,9 +384,11 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
     match s[2] {
         // account <id> delete
         "delete" => {
-            return Some(Message::AccountDelete {
-                account_id: s[1].into(),
-            })
+            if let Ok(id) = s[1].parse::<u32>() {
+                return Some(Message::AccountDelete { account_id: id });
+            } else {
+                return None;
+            }
         }
 
         // account <id> buddies [online]
@@ -725,9 +727,7 @@ mod tests {
                 user: "user".into(),
                 password: "REDACTED".into(), // password is always "REDACTED" after to_string()
             },
-            Message::AccountDelete {
-                account_id: "1".into(),
-            },
+            Message::AccountDelete { account_id: 1 },
             Message::Buddy {
                 account_id: "1".into(),
                 status: "online".into(),

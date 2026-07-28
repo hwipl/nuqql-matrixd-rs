@@ -171,12 +171,11 @@ impl Daemon {
                 Ok(())
     }
 
-    async fn handle_message_account_delete(&mut self, account_id: String) -> anyhow::Result<()> {
-                if let Ok(id) = account_id.parse::<u32>()
-                    && let Some(account) = self.accounts.get(&id)
+    async fn handle_message_account_delete(&mut self, account_id: u32) -> anyhow::Result<()> {
+                if let Some(account) = self.accounts.get(&account_id)
                 {
                     // stop client
-                    self.matrix_clients.stop_account(id).await;
+                    self.matrix_clients.stop_account(account_id).await;
 
                     // remove client data files
                     let (user, server) = account.split_user();
@@ -187,7 +186,7 @@ impl Daemon {
                     }
 
                     // remove account
-                    self.accounts.remove(&id);
+                    self.accounts.remove(&account_id);
                     if let Err(err) = self
                         .accounts
                         .save(
