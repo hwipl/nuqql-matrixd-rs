@@ -237,7 +237,7 @@ impl Client {
                         };
                         let (name, alias) = Self::get_room_name_alias(&room);
                         let msg = Message::Buddy {
-                            account_id: account_id.clone(),
+                            account_id: account_id.to_string(),
                             status,
                             name,
                             alias,

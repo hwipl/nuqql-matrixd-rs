@@ -45,7 +45,7 @@ pub enum Message {
     // list buddies
     // account <id> buddies [online]
     BuddyList {
-        account_id: String,
+        account_id: u32,
         status: String,
     },
     // message
@@ -381,20 +381,20 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
         return None;
     }
 
+    let Ok(account_id) = s[1].parse::<u32>() else {
+        return None;
+    };
+
     match s[2] {
         // account <id> delete
         "delete" => {
-            if let Ok(id) = s[1].parse::<u32>() {
-                return Some(Message::AccountDelete { account_id: id });
-            } else {
-                return None;
-            }
+            return Some(Message::AccountDelete { account_id });
         }
 
         // account <id> buddies [online]
         "buddies" => {
             return Some(Message::BuddyList {
-                account_id: s[1].into(),
+                account_id,
                 status: (*s.get(3).unwrap_or(&"")).into(),
             });
         }
@@ -741,11 +741,11 @@ mod tests {
                 alias: "alias".into(),
             },
             Message::BuddyList {
-                account_id: "1".into(),
+                account_id: 1,
                 status: "".into(),
             },
             Message::BuddyList {
-                account_id: "1".into(),
+                account_id: 1,
                 status: "online".into(),
             },
             Message::Message {
