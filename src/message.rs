@@ -62,7 +62,7 @@ pub enum Message {
     // account <id> collect
     #[allow(clippy::enum_variant_names)]
     MessageCollect {
-        account_id: String,
+        account_id: u32,
     },
     // send message
     // account <id> send <user> <msg>
@@ -401,9 +401,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
 
         // account <id> collect
         "collect" => {
-            return Some(Message::MessageCollect {
-                account_id: s[1].into(),
-            });
+            return Some(Message::MessageCollect { account_id });
         }
 
         // account <id> send <user> <msg>
@@ -762,9 +760,7 @@ mod tests {
                 sender: "me".into(),
                 message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
             },
-            Message::MessageCollect {
-                account_id: "1".into(),
-            },
+            Message::MessageCollect { account_id: 1 },
             Message::MessageSend {
                 account_id: "1".into(),
                 destination: "other_user".into(),

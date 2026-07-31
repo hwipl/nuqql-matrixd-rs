@@ -240,11 +240,9 @@ impl Daemon {
                 self.handle_message_account_delete(account_id).await
             }
 
-            Message::MessageCollect { account_id } => {
-                if account_id.parse::<u32>().is_ok() {
-                    let msg = Message::error("history is not supported");
-                    self.queue.send(msg).await; // TODO: improve
-                };
+            Message::MessageCollect { account_id: _ } => {
+                let msg = Message::error("history is not supported");
+                self.queue.send(msg).await; // TODO: improve
                 Ok(())
             }
 
