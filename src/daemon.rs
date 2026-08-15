@@ -283,10 +283,9 @@ impl Daemon {
             }
 
             Message::StatusGet { account_id } => {
-                if let Ok(id) = account_id.parse::<u32>()
-                    && let Err(error) = self
+                if let Err(error) = self
                         .matrix_clients
-                        .send(id, Event::Message(Message::StatusGet { account_id }))
+                        .send(account_id, Event::Message(Message::StatusGet { account_id }))
                         .await
                 {
                     error!(%error, "Could not send status get message");

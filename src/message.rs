@@ -81,7 +81,7 @@ pub enum Message {
     // get current status
     // account <id> status get
     StatusGet {
-        account_id: String,
+        account_id: u32,
     },
     // set status
     // account <id> status set <status>
@@ -424,9 +424,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
             }
             match s[3] {
                 "get" => {
-                    return Some(Message::StatusGet {
-                        account_id: s[1].into(),
-                    });
+                    return Some(Message::StatusGet { account_id });
                 }
                 "set" => {
                     if s.len() < 5 {
@@ -775,9 +773,7 @@ mod tests {
                 account_id: "1".into(),
                 status: "online".into(),
             },
-            Message::StatusGet {
-                account_id: "1".into(),
-            },
+            Message::StatusGet { account_id: 1 },
             Message::StatusSet {
                 account_id: "1".into(),
                 status: "online".into(),
