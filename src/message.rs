@@ -86,7 +86,7 @@ pub enum Message {
     // set status
     // account <id> status set <status>
     StatusSet {
-        account_id: String,
+        account_id: u32,
         status: String,
     },
     // chat
@@ -431,7 +431,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
                         return None;
                     }
                     return Some(Message::StatusSet {
-                        account_id: s[1].into(),
+                        account_id,
                         status: s[4].into(),
                     });
                 }
@@ -775,7 +775,7 @@ mod tests {
             },
             Message::StatusGet { account_id: 1 },
             Message::StatusSet {
-                account_id: "1".into(),
+                account_id: 1,
                 status: "online".into(),
             },
             Message::Chat {
