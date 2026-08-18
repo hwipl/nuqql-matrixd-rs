@@ -100,7 +100,7 @@ pub enum Message {
     // list chats
     // account <acc_id> chat list
     ChatList {
-        account_id: String,
+        account_id: u32,
     },
     // join chat
     // account <id> chat join <chat>
@@ -451,9 +451,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
             }
             match s[3] {
                 "list" => {
-                    return Some(Message::ChatList {
-                        account_id: s[1].into(),
-                    });
+                    return Some(Message::ChatList { account_id });
                 }
                 "join" => {
                     if s.len() < 5 {
@@ -784,9 +782,7 @@ mod tests {
                 alias: "chat_alias".into(),
                 nick: "my_name".into(),
             },
-            Message::ChatList {
-                account_id: "1".into(),
-            },
+            Message::ChatList { account_id: 1 },
             Message::ChatJoin {
                 account_id: "1".into(),
                 chat: "some_chat".into(),

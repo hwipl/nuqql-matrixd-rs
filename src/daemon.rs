@@ -308,10 +308,9 @@ impl Daemon {
             }
 
             Message::ChatList { account_id } => {
-                if let Ok(id) = account_id.parse::<u32>()
-                    && let Err(error) = self
+                if let Err(error) = self
                         .matrix_clients
-                        .send(id, Event::Message(Message::ChatList { account_id }))
+                        .send(account_id, Event::Message(Message::ChatList { account_id }))
                         .await
                 {
                     error!(%error, "Could not send chat list message");
