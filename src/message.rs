@@ -105,7 +105,7 @@ pub enum Message {
     // join chat
     // account <id> chat join <chat>
     ChatJoin {
-        account_id: String,
+        account_id: u32,
         chat: String,
     },
     // leave chat
@@ -458,7 +458,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
                         return None;
                     }
                     return Some(Message::ChatJoin {
-                        account_id: s[1].into(),
+                        account_id,
                         chat: s[4].into(),
                     });
                 }
@@ -784,7 +784,7 @@ mod tests {
             },
             Message::ChatList { account_id: 1 },
             Message::ChatJoin {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
             },
             Message::ChatLeave {

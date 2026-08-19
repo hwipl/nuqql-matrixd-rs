@@ -320,10 +320,9 @@ impl Daemon {
 
             Message::ChatJoin { account_id, chat } => {
                 info!("Received chat join message");
-                if let Ok(id) = account_id.parse::<u32>()
-                    && let Err(error) = self
+                if let Err(error) = self
                         .matrix_clients
-                        .send(id, Event::Message(Message::ChatJoin { account_id, chat }))
+                        .send(account_id, Event::Message(Message::ChatJoin { account_id, chat }))
                         .await
                 {
                     error!(%error, "Could not send chat join message");
