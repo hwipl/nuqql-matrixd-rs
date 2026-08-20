@@ -333,10 +333,9 @@ impl Daemon {
 
             Message::ChatLeave { account_id, chat } => {
                 info!("Received chat leave message");
-                if let Ok(id) = account_id.parse::<u32>()
-                    && let Err(error) = self
+                if let Err(error) = self
                         .matrix_clients
-                        .send(id, Event::Message(Message::ChatLeave { account_id, chat }))
+                        .send(account_id, Event::Message(Message::ChatLeave { account_id, chat }))
                         .await
                 {
                     error!(%error, "Could not send chat leave message");

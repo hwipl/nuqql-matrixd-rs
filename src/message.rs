@@ -111,7 +111,7 @@ pub enum Message {
     // leave chat
     // account <id> chat part <chat>
     ChatLeave {
-        account_id: String,
+        account_id: u32,
         chat: String,
     },
     // chat message
@@ -467,7 +467,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
                         return None;
                     }
                     return Some(Message::ChatLeave {
-                        account_id: s[1].into(),
+                        account_id,
                         chat: s[4].into(),
                     });
                 }
@@ -788,7 +788,7 @@ mod tests {
                 chat: "some_chat".into(),
             },
             Message::ChatLeave {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
             },
             Message::ChatMessage {
