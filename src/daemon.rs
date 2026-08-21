@@ -350,11 +350,10 @@ impl Daemon {
                 message,
             } => {
                 info!("Received chat message send message");
-                if let Ok(id) = account_id.parse::<u32>()
-                    && let Err(error) = self
+                if let Err(error) = self
                         .matrix_clients
                         .send(
-                            id,
+                            account_id,
                             Event::Message(Message::ChatMessageSend {
                                 account_id,
                                 chat,

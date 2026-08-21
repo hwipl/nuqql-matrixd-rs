@@ -127,7 +127,7 @@ pub enum Message {
     // send chat message
     // account <id> chat send <chat> <msg>
     ChatMessageSend {
-        account_id: String,
+        account_id: u32,
         chat: String,
         message: String,
     },
@@ -476,7 +476,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
                         return None;
                     }
                     return Some(Message::ChatMessageSend {
-                        account_id: s[1].into(),
+                        account_id,
                         chat: s[4].into(),
                         message: s[5..].join(" "),
                     });
@@ -806,12 +806,12 @@ mod tests {
                 message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
             },
             Message::ChatMessageSend {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
                 message: "".into(),
             },
             Message::ChatMessageSend {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
                 message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
             },
