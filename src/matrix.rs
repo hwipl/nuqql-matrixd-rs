@@ -346,7 +346,7 @@ impl Client {
                     };
                     for member in members {
                         let msg = Message::ChatUser {
-                            account_id: account_id.clone(),
+                            account_id: account_id.to_string(),
                             chat: chat.clone(),
                             user: member.user_id().into(),
                             alias: match member.display_name() {

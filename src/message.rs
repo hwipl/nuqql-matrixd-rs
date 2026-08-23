@@ -143,7 +143,7 @@ pub enum Message {
     // list chat users
     // account <id> chat users <chat>
     ChatUserList {
-        account_id: String,
+        account_id: u32,
         chat: String,
     },
     // invite user to chat
@@ -486,7 +486,7 @@ fn parse_account_command(s: Vec<&str>) -> Option<Message> {
                         return None;
                     }
                     return Some(Message::ChatUserList {
-                        account_id: s[1].into(),
+                        account_id,
                         chat: s[4].into(),
                     });
                 }
@@ -823,7 +823,7 @@ mod tests {
                 status: "online".into(),
             },
             Message::ChatUserList {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
             },
             Message::ChatUserInvite {
