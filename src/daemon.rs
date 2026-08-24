@@ -389,18 +389,17 @@ impl Daemon {
                 user,
             } => {
                 info!("Received chat user invite message");
-                if let Ok(id) = account_id.parse::<u32>()
-                    && let Err(error) = self
-                        .matrix_clients
-                        .send(
-                            id,
-                            Event::Message(Message::ChatUserInvite {
-                                account_id,
-                                chat,
-                                user,
-                            }),
-                        )
-                        .await
+                if let Err(error) = self
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::ChatUserInvite {
+                            account_id,
+                            chat,
+                            user,
+                        }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send chat user invite message");
                 }
