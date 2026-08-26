@@ -134,7 +134,7 @@ pub enum Message {
     // chat user
     // chat: user: <acc_id> <chat> <name> <alias> <state>
     ChatUser {
-        account_id: String,
+        account_id: u32,
         chat: String,
         user: String,
         alias: String,
@@ -530,6 +530,9 @@ fn parse_chat(s: Vec<&str>) -> Option<Message> {
     if s.len() < 6 {
         return None;
     }
+    let Ok(account_id) = s[2].parse::<u32>() else {
+        return None;
+    };
     match s[1] {
         "msg:" => {
             if s.len() < 7 {
@@ -554,7 +557,7 @@ fn parse_chat(s: Vec<&str>) -> Option<Message> {
                 return None;
             }
             Some(Message::ChatUser {
-                account_id: s[2].into(),
+                account_id,
                 chat: s[3].into(),
                 user: s[4].into(),
                 alias: s[5].into(),
@@ -816,7 +819,7 @@ mod tests {
                 message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
             },
             Message::ChatUser {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
                 user: "user".into(),
                 alias: "alias".into(),
