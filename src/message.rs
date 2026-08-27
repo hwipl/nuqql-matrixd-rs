@@ -118,7 +118,7 @@ pub enum Message {
     // chat: msg: <acc_id> <chat> <timestamp> <sender> <message>
     #[allow(clippy::enum_variant_names)]
     ChatMessage {
-        account_id: String,
+        account_id: u32,
         chat: String,
         timestamp: String,
         sender: String,
@@ -539,7 +539,7 @@ fn parse_chat(s: Vec<&str>) -> Option<Message> {
                 return None;
             }
             Some(Message::ChatMessage {
-                account_id: s[2].into(),
+                account_id,
                 chat: s[3].into(),
                 timestamp: s[4].into(),
                 sender: s[5].into(),
@@ -795,14 +795,14 @@ mod tests {
                 chat: "some_chat".into(),
             },
             Message::ChatMessage {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
                 timestamp: "1700000000".into(),
                 sender: "some_user".into(),
                 message: "".into(),
             },
             Message::ChatMessage {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
                 timestamp: "1700000000".into(),
                 sender: "some_user".into(),

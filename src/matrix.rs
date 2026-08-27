@@ -572,7 +572,7 @@ impl Client {
         );
         if let Err(error) = from_matrix
             .send(Event::Message(Message::ChatMessage {
-                account_id: account_id.to_string(),
+                account_id,
                 chat: room.room_id().to_string(),
                 timestamp: event.origin_server_ts.as_secs().to_string(),
                 sender: event.sender.to_string(),
