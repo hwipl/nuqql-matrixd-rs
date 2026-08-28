@@ -92,7 +92,7 @@ pub enum Message {
     // chat
     // chat: list: <acc_id> <chat_id> <chat_alias> <nick>
     Chat {
-        account_id: String,
+        account_id: u32,
         chat: String,
         alias: String,
         nick: String,
@@ -547,7 +547,7 @@ fn parse_chat(s: Vec<&str>) -> Option<Message> {
             })
         }
         "list:" => Some(Message::Chat {
-            account_id: s[2].into(),
+            account_id,
             chat: s[3].into(),
             alias: s[4].into(),
             nick: s[5].into(),
@@ -780,7 +780,7 @@ mod tests {
                 status: "online".into(),
             },
             Message::Chat {
-                account_id: "1".into(),
+                account_id: 1,
                 chat: "some_chat".into(),
                 alias: "chat_alias".into(),
                 nick: "my_name".into(),
