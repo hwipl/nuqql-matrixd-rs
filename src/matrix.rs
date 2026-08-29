@@ -258,7 +258,7 @@ impl Client {
 
                 Event::Message(Message::StatusGet { account_id }) => {
                     let msg = Message::Status {
-                        account_id: account_id.to_string(),
+                        account_id,
                         status: if client.is_active() {
                             Self::convert_presence_to_status(presence)
                         } else {

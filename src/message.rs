@@ -75,7 +75,7 @@ pub enum Message {
     // status
     // status: account <acc_id> status: <status>
     Status {
-        account_id: String,
+        account_id: u32,
         status: String,
     },
     // get current status
@@ -321,8 +321,11 @@ fn parse_status(s: Vec<&str>) -> Option<Message> {
     if s.len() < 5 {
         return None;
     }
+    let Ok(account_id) = s[2].parse::<u32>() else {
+        return None;
+    };
     Some(Message::Status {
-        account_id: s[2].into(),
+        account_id,
         status: s[4].into(),
     })
 }
@@ -771,7 +774,7 @@ mod tests {
                 message: "this is a test message\ndoes it work?\n \n \n  -test".into(),
             },
             Message::Status {
-                account_id: "1".into(),
+                account_id: 1,
                 status: "online".into(),
             },
             Message::StatusGet { account_id: 1 },
