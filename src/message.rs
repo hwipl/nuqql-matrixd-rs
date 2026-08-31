@@ -52,7 +52,7 @@ pub enum Message {
     // message: <acc_id> <destination> <timestamp> <sender> <msg>
     #[allow(clippy::enum_variant_names)]
     Message {
-        account_id: String,
+        account_id: u32,
         destination: String,
         timestamp: String,
         sender: String,
@@ -307,8 +307,11 @@ fn parse_message(s: Vec<&str>) -> Option<Message> {
     if s.len() < 6 {
         return None;
     }
+    let Ok(account_id) = s[1].parse::<u32>() else {
+        return None;
+    };
     Some(Message::Message {
-        account_id: s[1].into(),
+        account_id,
         destination: s[2].into(),
         timestamp: s[3].into(),
         sender: s[4].into(),
@@ -749,14 +752,14 @@ mod tests {
                 status: "online".into(),
             },
             Message::Message {
-                account_id: "1".into(),
+                account_id: 1,
                 destination: "other_user".into(),
                 timestamp: "1700000000".into(),
                 sender: "me".into(),
                 message: "".into(),
             },
             Message::Message {
-                account_id: "1".into(),
+                account_id: 1,
                 destination: "other_user".into(),
                 timestamp: "1700000000".into(),
                 sender: "me".into(),
