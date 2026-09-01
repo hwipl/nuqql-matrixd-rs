@@ -37,7 +37,7 @@ pub enum Message {
     // buddy
     // buddy: <acc_id> status: <status> name: <name> alias: [alias]
     Buddy {
-        account_id: String,
+        account_id: u32,
         status: String,
         name: String,
         alias: String,
@@ -521,8 +521,11 @@ fn parse_buddy(s: Vec<&str>) -> Option<Message> {
     if s.len() < 7 {
         return None;
     }
+    let Ok(account_id) = s[1].parse::<u32>() else {
+        return None;
+    };
     Some(Message::Buddy {
-        account_id: s[1].into(),
+        account_id,
         status: s[3].into(),
         name: s[5].into(),
         alias: (*s.get(7).unwrap_or(&"")).into(),
@@ -732,13 +735,13 @@ mod tests {
             },
             Message::AccountDelete { account_id: 1 },
             Message::Buddy {
-                account_id: "1".into(),
+                account_id: 1,
                 status: "online".into(),
                 name: "user".into(),
                 alias: "".into(),
             },
             Message::Buddy {
-                account_id: "1".into(),
+                account_id: 1,
                 status: "online".into(),
                 name: "user".into(),
                 alias: "alias".into(),
