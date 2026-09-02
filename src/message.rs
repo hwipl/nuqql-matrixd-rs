@@ -13,7 +13,7 @@ pub enum Message {
     // account
     // account: <id> <name> <protocol> <user> <status>
     Account {
-        id: String,
+        id: u32,
         name: String,
         protocol: String,
         user: String,
@@ -337,8 +337,11 @@ fn parse_account(s: Vec<&str>) -> Option<Message> {
     if s.len() < 6 {
         return None;
     }
+    let Ok(account_id) = s[1].parse::<u32>() else {
+        return None;
+    };
     Some(Message::Account {
-        id: s[1].into(),
+        id: account_id,
         name: s[2].into(),
         protocol: s[3].into(),
         user: s[4].into(),
@@ -721,7 +724,7 @@ mod tests {
                 message: "some error!".into(),
             },
             Message::Account {
-                id: "1".into(),
+                id: 1,
                 name: "matrix".into(),
                 protocol: "matrix".into(),
                 user: "user".into(),
