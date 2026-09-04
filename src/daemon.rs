@@ -145,55 +145,54 @@ impl Daemon {
         password: String,
         from_matrix_tx: &mpsc::Sender<Event>,
     ) -> anyhow::Result<()> {
-                let account = self.accounts.add(protocol, user, password);
-                if account.protocol == "matrix" {
-                    self.matrix_clients.start_account(
-                        self.config.clone(),
-                        &account,
-                        from_matrix_tx.clone(),
-                    );
-                }
-                if let Err(err) = self
-                    .accounts
-                    .save(
-                        &self.config.accounts_file,
-                        self.config.accounts_file_permissions,
-                    )
-                    .await
-                {
-                    error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
-                }
-                Ok(())
+        let account = self.accounts.add(protocol, user, password);
+        if account.protocol == "matrix" {
+            self.matrix_clients.start_account(
+                self.config.clone(),
+                &account,
+                from_matrix_tx.clone(),
+            );
+        }
+        if let Err(err) = self
+            .accounts
+            .save(
+                &self.config.accounts_file,
+                self.config.accounts_file_permissions,
+            )
+            .await
+        {
+            error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
+        }
+        Ok(())
     }
 
     async fn handle_message_account_delete(&mut self, account_id: u32) -> anyhow::Result<()> {
-                if let Some(account) = self.accounts.get(&account_id)
-                {
-                    // stop client
-                    self.matrix_clients.stop_account(account_id).await;
+        if let Some(account) = self.accounts.get(&account_id) {
+            // stop client
+            self.matrix_clients.stop_account(account_id).await;
 
-                    // remove client data files
-                    let (user, server) = account.split_user();
-                    let data_folder: PathBuf = ["data", &server, &user].iter().collect();
-                    let data_folder = self.config.dir.join(data_folder);
-                    if let Err(error) = tokio::fs::remove_dir_all(&data_folder).await {
-                        error!(data_folder = %data_folder.to_string_lossy(), %error, "Could not remove client data directory");
-                    }
+            // remove client data files
+            let (user, server) = account.split_user();
+            let data_folder: PathBuf = ["data", &server, &user].iter().collect();
+            let data_folder = self.config.dir.join(data_folder);
+            if let Err(error) = tokio::fs::remove_dir_all(&data_folder).await {
+                error!(data_folder = %data_folder.to_string_lossy(), %error, "Could not remove client data directory");
+            }
 
-                    // remove account
-                    self.accounts.remove(&account_id);
-                    if let Err(err) = self
-                        .accounts
-                        .save(
-                            &self.config.accounts_file,
-                            self.config.accounts_file_permissions,
-                        )
-                        .await
-                    {
-                        error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
-                    }
-                }
-                Ok(())
+            // remove account
+            self.accounts.remove(&account_id);
+            if let Err(err) = self
+                .accounts
+                .save(
+                    &self.config.accounts_file,
+                    self.config.accounts_file_permissions,
+                )
+                .await
+            {
+                error!(file = %self.config.accounts_file.to_string_lossy(), permissions=self.config.accounts_file_permissions, error = %err, "Could not save accounts to file");
+            }
+        }
+        Ok(())
     }
 
     async fn handle_message(
@@ -221,15 +220,14 @@ impl Daemon {
                 self.queue.send(msg).await; // TODO: improve
                 Ok(())
             }
-            Message::AccountList => {
-                self.handle_message_account_list().await
-            }
+            Message::AccountList => self.handle_message_account_list().await,
             Message::AccountAdd {
                 protocol,
                 user,
                 password,
             } => {
-                self.handle_message_account_add(protocol, user, password, from_matrix_tx).await
+                self.handle_message_account_add(protocol, user, password, from_matrix_tx)
+                    .await
             }
             Message::AccountDelete { account_id } => {
                 self.handle_message_account_delete(account_id).await
@@ -243,12 +241,12 @@ impl Daemon {
 
             Message::BuddyList { account_id, status } => {
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(
-                            account_id,
-                            Event::Message(Message::BuddyList { account_id, status }),
-                        )
-                        .await
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::BuddyList { account_id, status }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send buddy list message");
                 }
@@ -261,16 +259,16 @@ impl Daemon {
                 message,
             } => {
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::MessageSend {
                             account_id,
-                            Event::Message(Message::MessageSend {
-                                account_id,
-                                destination,
-                                message,
-                            }),
-                        )
-                        .await
+                            destination,
+                            message,
+                        }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send message send message");
                 }
@@ -279,9 +277,12 @@ impl Daemon {
 
             Message::StatusGet { account_id } => {
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(account_id, Event::Message(Message::StatusGet { account_id }))
-                        .await
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::StatusGet { account_id }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send status get message");
                 }
@@ -290,12 +291,12 @@ impl Daemon {
 
             Message::StatusSet { account_id, status } => {
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(
-                            account_id,
-                            Event::Message(Message::StatusSet { account_id, status }),
-                        )
-                        .await
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::StatusSet { account_id, status }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send status set message");
                 }
@@ -304,9 +305,9 @@ impl Daemon {
 
             Message::ChatList { account_id } => {
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(account_id, Event::Message(Message::ChatList { account_id }))
-                        .await
+                    .matrix_clients
+                    .send(account_id, Event::Message(Message::ChatList { account_id }))
+                    .await
                 {
                     error!(%error, "Could not send chat list message");
                 }
@@ -316,9 +317,12 @@ impl Daemon {
             Message::ChatJoin { account_id, chat } => {
                 info!("Received chat join message");
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(account_id, Event::Message(Message::ChatJoin { account_id, chat }))
-                        .await
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::ChatJoin { account_id, chat }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send chat join message");
                 }
@@ -329,9 +333,12 @@ impl Daemon {
             Message::ChatLeave { account_id, chat } => {
                 info!("Received chat leave message");
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(account_id, Event::Message(Message::ChatLeave { account_id, chat }))
-                        .await
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::ChatLeave { account_id, chat }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send chat leave message");
                 }
@@ -346,16 +353,16 @@ impl Daemon {
             } => {
                 info!("Received chat message send message");
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::ChatMessageSend {
                             account_id,
-                            Event::Message(Message::ChatMessageSend {
-                                account_id,
-                                chat,
-                                message,
-                            }),
-                        )
-                        .await
+                            chat,
+                            message,
+                        }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send chat send message");
                 }
@@ -366,12 +373,12 @@ impl Daemon {
             Message::ChatUserList { account_id, chat } => {
                 info!("Received chat user list message");
                 if let Err(error) = self
-                        .matrix_clients
-                        .send(
-                            account_id,
-                            Event::Message(Message::ChatUserList { account_id, chat }),
-                        )
-                        .await
+                    .matrix_clients
+                    .send(
+                        account_id,
+                        Event::Message(Message::ChatUserList { account_id, chat }),
+                    )
+                    .await
                 {
                     error!(%error, "Could not send chat user list message");
                 }
