@@ -195,6 +195,12 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_message_collect(&mut self) -> anyhow::Result<()> {
+        let msg = Message::error("history is not supported");
+        self.queue.send(msg).await; // TODO: improve
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -234,9 +240,7 @@ impl Daemon {
             }
 
             Message::MessageCollect { account_id: _ } => {
-                let msg = Message::error("history is not supported");
-                self.queue.send(msg).await; // TODO: improve
-                Ok(())
+                self.handle_message_message_collect().await
             }
 
             Message::BuddyList { account_id, status } => {
