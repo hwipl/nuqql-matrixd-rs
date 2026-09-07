@@ -201,6 +201,24 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_buddy_list(
+        &mut self,
+        account_id: u32,
+        status: String,
+    ) -> anyhow::Result<()> {
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::BuddyList { account_id, status }),
+            )
+            .await
+        {
+            error!(%error, "Could not send buddy list message");
+        }
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -244,17 +262,7 @@ impl Daemon {
             }
 
             Message::BuddyList { account_id, status } => {
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::BuddyList { account_id, status }),
-                    )
-                    .await
-                {
-                    error!(%error, "Could not send buddy list message");
-                }
-                Ok(())
+                self.handle_message_buddy_list(account_id, status).await
             }
 
             Message::MessageSend {
