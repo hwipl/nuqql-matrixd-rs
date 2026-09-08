@@ -219,6 +219,29 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_message_send(
+        &mut self,
+        account_id: u32,
+        destination: String,
+        message: String,
+    ) -> anyhow::Result<()> {
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::MessageSend {
+                    account_id,
+                    destination,
+                    message,
+                }),
+            )
+            .await
+        {
+            error!(%error, "Could not send message send message");
+        }
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -270,21 +293,8 @@ impl Daemon {
                 destination,
                 message,
             } => {
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::MessageSend {
-                            account_id,
-                            destination,
-                            message,
-                        }),
-                    )
+                self.handle_message_message_send(account_id, destination, message)
                     .await
-                {
-                    error!(%error, "Could not send message send message");
-                }
-                Ok(())
             }
 
             Message::StatusGet { account_id } => {
