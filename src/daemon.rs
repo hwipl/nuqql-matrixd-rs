@@ -242,6 +242,20 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_status_get(&mut self, account_id: u32) -> anyhow::Result<()> {
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::StatusGet { account_id }),
+            )
+            .await
+        {
+            error!(%error, "Could not send status get message");
+        }
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -297,19 +311,7 @@ impl Daemon {
                     .await
             }
 
-            Message::StatusGet { account_id } => {
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::StatusGet { account_id }),
-                    )
-                    .await
-                {
-                    error!(%error, "Could not send status get message");
-                }
-                Ok(())
-            }
+            Message::StatusGet { account_id } => self.handle_message_status_get(account_id).await,
 
             Message::StatusSet { account_id, status } => {
                 if let Err(error) = self
