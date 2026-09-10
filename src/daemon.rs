@@ -256,6 +256,24 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_status_set(
+        &mut self,
+        account_id: u32,
+        status: String,
+    ) -> anyhow::Result<()> {
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::StatusSet { account_id, status }),
+            )
+            .await
+        {
+            error!(%error, "Could not send status set message");
+        }
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -314,17 +332,7 @@ impl Daemon {
             Message::StatusGet { account_id } => self.handle_message_status_get(account_id).await,
 
             Message::StatusSet { account_id, status } => {
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::StatusSet { account_id, status }),
-                    )
-                    .await
-                {
-                    error!(%error, "Could not send status set message");
-                }
-                Ok(())
+                self.handle_message_status_set(account_id, status).await
             }
 
             Message::ChatList { account_id } => {
