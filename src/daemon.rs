@@ -112,6 +112,12 @@ impl Daemon {
         }
     }
 
+    async fn handle_message_help(&mut self) -> anyhow::Result<()> {
+        let msg = Message::info_help();
+        self.queue.send(msg).await; // TODO: improve
+        Ok(())
+    }
+
     async fn handle_message_account_list(&mut self) -> anyhow::Result<()> {
         let accounts = self.accounts.list();
         for account in &accounts {
@@ -281,11 +287,7 @@ impl Daemon {
     ) -> anyhow::Result<()> {
         debug!(%msg, "Handling message");
         match msg {
-            Message::Help => {
-                let msg = Message::info_help();
-                self.queue.send(msg).await; // TODO: improve
-                Ok(())
-            }
+            Message::Help => self.handle_message_help().await,
             Message::Bye => {
                 self.queue.set_client(None).await;
                 Ok(())
