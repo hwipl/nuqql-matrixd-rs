@@ -123,6 +123,11 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_quit(&mut self) -> anyhow::Result<()> {
+        self.done = true;
+        Ok(())
+    }
+
     async fn handle_message_account_list(&mut self) -> anyhow::Result<()> {
         let accounts = self.accounts.list();
         for account in &accounts {
@@ -294,10 +299,7 @@ impl Daemon {
         match msg {
             Message::Help => self.handle_message_help().await,
             Message::Bye => self.handle_message_bye().await,
-            Message::Quit => {
-                self.done = true;
-                Ok(())
-            }
+            Message::Quit => self.handle_message_quit().await,
             Message::Version => {
                 let msg = Message::info_version();
                 self.queue.send(msg).await; // TODO: improve
