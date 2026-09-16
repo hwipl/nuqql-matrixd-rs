@@ -128,6 +128,12 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_version(&mut self) -> anyhow::Result<()> {
+        let msg = Message::info_version();
+        self.queue.send(msg).await; // TODO: improve
+        Ok(())
+    }
+
     async fn handle_message_account_list(&mut self) -> anyhow::Result<()> {
         let accounts = self.accounts.list();
         for account in &accounts {
@@ -300,11 +306,7 @@ impl Daemon {
             Message::Help => self.handle_message_help().await,
             Message::Bye => self.handle_message_bye().await,
             Message::Quit => self.handle_message_quit().await,
-            Message::Version => {
-                let msg = Message::info_version();
-                self.queue.send(msg).await; // TODO: improve
-                Ok(())
-            }
+            Message::Version => self.handle_message_version().await,
             Message::AccountList => self.handle_message_account_list().await,
             Message::AccountAdd {
                 protocol,
