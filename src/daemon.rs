@@ -307,6 +307,26 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_chat_join(
+        &mut self,
+        account_id: u32,
+        chat: String,
+    ) -> anyhow::Result<()> {
+        info!("Received chat join message");
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::ChatJoin { account_id, chat }),
+            )
+            .await
+        {
+            error!(%error, "Could not send chat join message");
+        }
+        info!("Forwarded chat join message to be sent");
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -355,19 +375,7 @@ impl Daemon {
             }
             Message::ChatList { account_id } => self.handle_message_chat_list(account_id).await,
             Message::ChatJoin { account_id, chat } => {
-                info!("Received chat join message");
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::ChatJoin { account_id, chat }),
-                    )
-                    .await
-                {
-                    error!(%error, "Could not send chat join message");
-                }
-                info!("Forwarded chat join message to be sent");
-                Ok(())
+                self.handle_message_chat_join(account_id, chat).await
             }
 
             Message::ChatLeave { account_id, chat } => {
