@@ -327,6 +327,26 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_chat_leave(
+        &mut self,
+        account_id: u32,
+        chat: String,
+    ) -> anyhow::Result<()> {
+        info!("Received chat leave message");
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::ChatLeave { account_id, chat }),
+            )
+            .await
+        {
+            error!(%error, "Could not send chat leave message");
+        }
+        info!("Forwarded chat leave message to be sent");
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -379,19 +399,7 @@ impl Daemon {
             }
 
             Message::ChatLeave { account_id, chat } => {
-                info!("Received chat leave message");
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::ChatLeave { account_id, chat }),
-                    )
-                    .await
-                {
-                    error!(%error, "Could not send chat leave message");
-                }
-                info!("Forwarded chat leave message to be sent");
-                Ok(())
+                self.handle_message_chat_leave(account_id, chat).await
             }
 
             Message::ChatMessageSend {
