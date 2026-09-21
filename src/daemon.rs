@@ -347,6 +347,31 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_chat_message_send(
+        &mut self,
+        account_id: u32,
+        chat: String,
+        message: String,
+    ) -> anyhow::Result<()> {
+        info!("Received chat message send message");
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::ChatMessageSend {
+                    account_id,
+                    chat,
+                    message,
+                }),
+            )
+            .await
+        {
+            error!(%error, "Could not send chat send message");
+        }
+        info!("Forwarded chat message send message to be sent");
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -407,23 +432,8 @@ impl Daemon {
                 chat,
                 message,
             } => {
-                info!("Received chat message send message");
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::ChatMessageSend {
-                            account_id,
-                            chat,
-                            message,
-                        }),
-                    )
+                self.handle_message_chat_message_send(account_id, chat, message)
                     .await
-                {
-                    error!(%error, "Could not send chat send message");
-                }
-                info!("Forwarded chat message send message to be sent");
-                Ok(())
             }
 
             Message::ChatUserList { account_id, chat } => {
