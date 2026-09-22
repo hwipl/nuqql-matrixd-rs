@@ -372,6 +372,25 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_chat_user_list(
+        &mut self,
+        account_id: u32,
+        chat: String,
+    ) -> anyhow::Result<()> {
+        info!("Received chat user list message");
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::ChatUserList { account_id, chat }),
+            )
+            .await
+        {
+            error!(%error, "Could not send chat user list message");
+        }
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -437,18 +456,7 @@ impl Daemon {
             }
 
             Message::ChatUserList { account_id, chat } => {
-                info!("Received chat user list message");
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::ChatUserList { account_id, chat }),
-                    )
-                    .await
-                {
-                    error!(%error, "Could not send chat user list message");
-                }
-                Ok(())
+                self.handle_message_chat_user_list(account_id, chat).await
             }
 
             Message::ChatUserInvite {
