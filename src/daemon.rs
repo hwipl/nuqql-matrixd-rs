@@ -391,6 +391,30 @@ impl Daemon {
         Ok(())
     }
 
+    async fn handle_message_chat_user_invite(
+        &mut self,
+        account_id: u32,
+        chat: String,
+        user: String,
+    ) -> anyhow::Result<()> {
+        info!("Received chat user invite message");
+        if let Err(error) = self
+            .matrix_clients
+            .send(
+                account_id,
+                Event::Message(Message::ChatUserInvite {
+                    account_id,
+                    chat,
+                    user,
+                }),
+            )
+            .await
+        {
+            error!(%error, "Could not send chat user invite message");
+        }
+        Ok(())
+    }
+
     async fn handle_message(
         &mut self,
         msg: Message,
@@ -464,22 +488,8 @@ impl Daemon {
                 chat,
                 user,
             } => {
-                info!("Received chat user invite message");
-                if let Err(error) = self
-                    .matrix_clients
-                    .send(
-                        account_id,
-                        Event::Message(Message::ChatUserInvite {
-                            account_id,
-                            chat,
-                            user,
-                        }),
-                    )
+                self.handle_message_chat_user_invite(account_id, chat, user)
                     .await
-                {
-                    error!(%error, "Could not send chat user invite message");
-                }
-                Ok(())
             }
 
             _ => {
