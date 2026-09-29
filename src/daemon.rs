@@ -438,15 +438,12 @@ impl Daemon {
             Message::AccountDelete { account_id } => {
                 self.handle_message_account_delete(account_id).await
             }
-
             Message::MessageCollect { account_id: _ } => {
                 self.handle_message_message_collect().await
             }
-
             Message::BuddyList { account_id, status } => {
                 self.handle_message_buddy_list(account_id, status).await
             }
-
             Message::MessageSend {
                 account_id,
                 destination,
@@ -455,9 +452,7 @@ impl Daemon {
                 self.handle_message_message_send(account_id, destination, message)
                     .await
             }
-
             Message::StatusGet { account_id } => self.handle_message_status_get(account_id).await,
-
             Message::StatusSet { account_id, status } => {
                 self.handle_message_status_set(account_id, status).await
             }
@@ -465,11 +460,9 @@ impl Daemon {
             Message::ChatJoin { account_id, chat } => {
                 self.handle_message_chat_join(account_id, chat).await
             }
-
             Message::ChatLeave { account_id, chat } => {
                 self.handle_message_chat_leave(account_id, chat).await
             }
-
             Message::ChatMessageSend {
                 account_id,
                 chat,
@@ -478,11 +471,9 @@ impl Daemon {
                 self.handle_message_chat_message_send(account_id, chat, message)
                     .await
             }
-
             Message::ChatUserList { account_id, chat } => {
                 self.handle_message_chat_user_list(account_id, chat).await
             }
-
             Message::ChatUserInvite {
                 account_id,
                 chat,
@@ -491,11 +482,7 @@ impl Daemon {
                 self.handle_message_chat_user_invite(account_id, chat, user)
                     .await
             }
-
-            _ => {
-                self.queue.send(msg).await; // TODO: improve
-                Ok(())
-            }
+            _ => Ok(()),
         }
     }
 
